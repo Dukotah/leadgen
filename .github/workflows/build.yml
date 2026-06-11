@@ -1,0 +1,109 @@
+name: Build desktop apps
+
+# Builds a self-contained Lead Engine binary for Windows, macOS, and Linux on real
+# runners, smoke-tests that each one boots and serves the UI, and uploads them.
+# Triggers:
+#   - manually (Actions tab → Run workflow). Set "release_tag" to also publish a
+#     public Release with the binaries attached.
+#   - on any tag like v1.0.0  (also attaches the binaries to a GitHub Release).
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Publish a public Release at this tag (e.g. v1.0.0). Leave blank for an artifact-only build."
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # needed to create/attach a Release on tag builds
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: LeadEngine-windows.exe
+            binary: dist/LeadEngine.exe
+          - os: macos-latest
+            asset: LeadEngine-macos
+            binary: dist/LeadEngine
+          - os: ubuntu-latest
+            asset: LeadEngine-linux
+            binary: dist/LeadEngine
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r gui/requirements.txt
+          pip install pyinstaller
+
+      - name: Sanity-check the engine before packaging
+        run: |
+          python leadgen/tests/test_engine.py
+          python leadgen/tests/test_heuristics.py
+          python leadgen/tests/test_features.py
+
+      - name: Build the binary
+        run: pyinstaller --clean --noconfirm gui/LeadEngine.spec
+
+      - name: Smoke-test the binary boots and serves
+        shell: bash
+        run: |
+          python - "${{ matrix.binary }}" <<'PY'
+          import subprocess, sys, time, urllib.request
+          binary = sys.argv[1]
+          proc = subprocess.Popen([binary])
+          ok = False
+          for _ in range(25):
+              time.sleep(1)
+              for port in (5000, 5001, 5050, 8000, 8080, 8765, 8910):
+                  try:
+                      r = urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2)
+                      if r.status == 200:
+                          print(f"Served on port {port}")
+                          ok = True
+                          break
+                  except Exception:
+                      pass
+              if ok:
+                  break
+          proc.terminate()
+          try:
+              proc.wait(timeout=10)
+          except Exception:
+              proc.kill()
+          sys.exit(0 if ok else 1)
+          PY
+
+      - name: Name the binary for upload
+        shell: bash
+        run: cp "${{ matrix.binary }}" "${{ matrix.asset }}"
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+          if-no-files-found: error
+
+      - name: Publish Release with the binary (tag push, or dispatch with release_tag)
+        if: ${{ startsWith(github.ref, 'refs/tags/') || github.event.inputs.release_tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag || '' }}
+          name: ${{ github.event.inputs.release_tag || '' }}
+          files: ${{ matrix.asset }}
+          fail_on_unmatched_files: true

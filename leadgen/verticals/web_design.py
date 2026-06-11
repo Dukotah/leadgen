@@ -13,23 +13,10 @@ from ctx, so `--demo` / the GUI "Try a demo" button need no network.
 from __future__ import annotations
 
 from .. import register, Vertical
-from ..audit import audit_website, audit_from_html, is_weak_url, DIY_BUILDERS
+from ..audit import is_weak_url, DIY_BUILDERS
+from ._common import audit_enrich
 
 CONFIG = {"diy_builders": DIY_BUILDERS}
-
-
-def _enrich(rec: dict, ctx: dict) -> dict:
-    site = rec.get("website") or ""
-    if not site or is_weak_url(site)[0]:
-        return rec  # no real site to audit — scoring handles the gap
-    demo_html = (ctx or {}).get("demo_html")
-    if demo_html is not None:
-        # Offline: score the bundled fixture exactly as a live fetch would.
-        html = demo_html(site)
-        rec["audit"] = audit_from_html(html, site, reachable=bool(html))
-    else:
-        rec["audit"] = audit_website(site)
-    return rec
 
 
 def _score(rec: dict) -> tuple[int, str, str]:
@@ -89,7 +76,7 @@ register(Vertical(
               "shop=hairdresser", "amenity=restaurant", "office=lawyer"],
     keep_chains=False,               # chains don't buy from local web designers
     score_fn=_score,
-    enrich_fn=_enrich,
+    enrich_fn=audit_enrich,
     opener_fn=_opener,
     config=CONFIG,
     columns=COLUMNS,

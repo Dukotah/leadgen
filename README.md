@@ -22,6 +22,24 @@ No API keys. No accounts. Runs on your machine.
 
 ---
 
+## Just want to run it? (no coding)
+
+Download the desktop app for your computer, double-click, done — no Python, no setup:
+
+- **Windows** → `LeadEngine-windows.exe`
+- **macOS** → `LeadEngine-macos`
+- **Linux** → `LeadEngine-linux`
+
+Grab the latest from the [**Releases**](../../releases) page. It opens a simple
+window: pick what to find and where, click **Find leads**, download a spreadsheet.
+There's a **“Try a sample”** button that works with no internet so you can see
+exactly what you'll get first. (Unsigned binaries trip Windows SmartScreen / macOS
+Gatekeeper once — "Run anyway" / right-click → Open. See [`gui/BUILD_EXE.md`](gui/BUILD_EXE.md).)
+
+The rest of this README is for people who want to script it or extend it.
+
+---
+
 ## Quick start
 
 ```bash

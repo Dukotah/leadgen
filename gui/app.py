@@ -33,6 +33,8 @@ app = Flask(__name__)
 
 # In-memory job store: job_id -> {log, done, error, stats, leads, files}
 JOBS: dict[str, dict] = {}
+# Last few completed runs this session, for the "recent runs" panel (newest first).
+RECENT: list[dict] = []
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_output")
 os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -84,14 +86,21 @@ def run_job(job_id: str, params: dict):
             "xlsx": os.path.basename(files[1]) if files else None,
         }
         job["columns"] = vertical.columns
-        # Keep a preview (top 50) for in-page rendering; full data is in the files.
-        job["leads"] = leads[:50]
+        # Keep a preview (top 1000) for in-page search/browse; full data is in the files.
+        job["leads"] = leads[:1000]
         job["stats"] = _tier_counts(leads, total=len(leads))
         if not leads:
             job["notice"] = explain_empty_result(market, sources, vertical.label)
             log(job["notice"])
         else:
             log(f"Done. {len(leads)} leads — download below.")
+            # Remember this run for the session "recent runs" panel.
+            RECENT.insert(0, {
+                "jid": job_id, "label": vertical.label,
+                "market": market or "(sample)", "stats": job["stats"],
+                "files": job["files"], "when": datetime.now().strftime("%H:%M"),
+            })
+            del RECENT[8:]
     except Exception as e:
         raw = f"{type(e).__name__}: {e}"
         job["error"] = friendly_error(str(e)) or raw
@@ -141,6 +150,12 @@ def start_run():
 def check():
     """Connectivity self-check — probe every data source, plain-English status."""
     return jsonify(check_connectivity())
+
+
+@app.route("/recent")
+def recent():
+    """The last few completed runs this session (for the recent-runs panel)."""
+    return jsonify(RECENT)
 
 
 @app.route("/progress/<jid>")
@@ -236,12 +251,23 @@ th,td{border:1px solid #e3e8ee;padding:5px 7px;text-align:left;vertical-align:to
 th{background:#eef2f7;position:sticky;top:0}
 .tierA{background:#e8f8ec}.tierB{background:#fff8e1}.tierC{background:#fdecee}
 .tablewrap{max-height:440px;overflow:auto;border-radius:9px;border:1px solid #e3e8ee;margin-top:14px;display:none}
+.recent{display:flex;flex-wrap:wrap;gap:8px}
+.rcard{border:1px solid #dde2e8;border-radius:8px;padding:8px 11px;background:#fff;font-size:12.5px;min-width:210px}
+.rcard b{color:var(--blue)}.rcard a{color:var(--green);text-decoration:none;font-weight:600}
+.rcard .meta{color:#889;font-size:11.5px;margin:2px 0 5px}
+#resultsearch{display:none;margin-top:14px}
 </style></head><body>
 <h1>Lead Engine</h1>
 <p class="sub">Find scored local-business leads from free public data — no accounts, no API keys.</p>
 
 <div class="firsttime">
   <b>First time?</b> Click <b>“Try a sample”</b> at the bottom — it runs instantly with no internet and shows exactly what you’ll get. Then fill in the boxes below for a real search.
+</div>
+
+<div id="recentwrap" style="display:none">
+  <fieldset><legend>Recent runs <span class="opt">(this session)</span></legend>
+    <div class="recent" id="recentlist"></div>
+  </fieldset>
 </div>
 
 <form id="form">
@@ -324,6 +350,9 @@ th{background:#eef2f7;position:sticky;top:0}
 <details id="logwrap" class="adv" style="display:none"><summary>Show activity log</summary>
   <div id="status"></div>
 </details>
+<div id="resultsearch">
+  <input type="text" id="r_filter" placeholder="Filter these results… (name, city, why a lead, pitch)">
+</div>
 <div class="tablewrap" id="tablewrap"><table id="preview"></table></div>
 
 <script>
@@ -397,7 +426,7 @@ form.addEventListener("submit", e=>{
   const body=baseBody();
   if(!body.market.trim()){ alert("Type an area to search, or click “Try a sample”."); return; }
   if(!body.sources.length){ alert("Leave at least one data source ticked under “Where the data comes from”."); return; }
-  body.demo=false; startRun(body);
+  body.demo=false; saveMarket(body.market); startRun(body);
 });
 
 demoBtn.addEventListener("click", ()=>{
@@ -424,6 +453,7 @@ function poll(jid){
     statusEl.textContent=j.log.join("\\n"); statusEl.scrollTop=statusEl.scrollHeight;
     if(j.done){
       clearInterval(t); go.disabled=false; demoBtn.disabled=false; go.textContent=GO_LABEL;
+      loadRecent();
       if(j.error){ checkout.innerHTML=`<div class="banner bad">${esc(j.error)}</div>`; }
       if(j.notice){ checkout.innerHTML=`<div class="banner warn">${esc(j.notice)}</div>`; }
       if(j.stats){
@@ -447,15 +477,64 @@ function poll(jid){
   }, 700);
 }
 
+let curLeads=[], curCols=[];
 function renderTable(leads, columns){
-  const cols = columns.slice(0, 9); // keep the preview readable
+  curLeads=leads||[]; curCols=columns||[];
+  document.getElementById("resultsearch").style.display="block";
+  drawRows();
+}
+function drawRows(){
+  const q=(document.getElementById("r_filter").value||"").toLowerCase().trim();
+  const cols=curCols.slice(0, 9); // keep the preview readable
+  const match=r=>cols.some(c=>String(r[c[1]]==null?"":r[c[1]]).toLowerCase().includes(q));
+  const rows=(q?curLeads.filter(match):curLeads).slice(0,500);
   let h="<thead><tr>"+cols.map(c=>`<th>${esc(c[0])}</th>`).join("")+"</tr></thead><tbody>";
-  for(const r of leads){
+  for(const r of rows){
     const tier=r.tier||"C";
     h+=`<tr class="tier${esc(tier)}">`+cols.map(c=>`<td>${esc(r[c[1]])}</td>`).join("")+"</tr>";
   }
   table.innerHTML=h+"</tbody>"; table.style.display="table"; tablewrap.style.display="block";
 }
+document.getElementById("r_filter").addEventListener("input", drawRows);
+
+// Recent runs (this session) — re-download without re-running.
+async function loadRecent(){
+  try{
+    const list=await (await fetch("/recent")).json();
+    const wrap=document.getElementById("recentwrap"), el=document.getElementById("recentlist");
+    if(!list.length){ wrap.style.display="none"; return; }
+    el.innerHTML=list.map(r=>{
+      const f=r.files||{};
+      const links=[f.xlsx?`<a href="/download/xlsx/${r.jid}">⬇ Excel</a>`:"",
+                   f.csv?`<a href="/download/csv/${r.jid}">⬇ CSV</a>`:""].filter(Boolean).join(" · ");
+      return `<div class="rcard"><b>${esc(r.label)}</b>`
+        +`<div class="meta">${esc(r.market)} · ${esc(r.when)}</div>`
+        +`${r.stats.total} leads · 🟢${r.stats.A} 🟡${r.stats.B} 🔴${r.stats.C}`
+        +`<div style="margin-top:5px">${links}</div></div>`;
+    }).join("");
+    wrap.style.display="block";
+  }catch(e){}
+}
+
+// Remember markets the user actually searched, across sessions.
+function loadSavedMarkets(){
+  try{
+    const saved=JSON.parse(localStorage.getItem("leadgen_markets")||"[]");
+    const dl=document.getElementById("markets");
+    saved.forEach(m=>{ if(![...dl.options].some(o=>o.value===m)){
+      const o=document.createElement("option"); o.value=m; dl.appendChild(o); } });
+  }catch(e){}
+}
+function saveMarket(m){
+  if(!m||!m.trim()) return;
+  try{
+    let saved=JSON.parse(localStorage.getItem("leadgen_markets")||"[]");
+    saved=[m,...saved.filter(x=>x!==m)].slice(0,8);
+    localStorage.setItem("leadgen_markets",JSON.stringify(saved));
+  }catch(e){}
+}
+
+loadSavedMarkets(); loadRecent();
 </script>
 </body></html>"""
 
