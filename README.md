@@ -1,0 +1,149 @@
+# leadgen — a universal local-business lead engine
+
+One pipeline — **collect → dedupe → enrich → suppress → score → export** — driven
+by swappable **verticals**. A *vertical* describes WHAT you're prospecting for and
+HOW to score it; the engine handles everything else. Point it at any geocodable
+market on Earth, pull businesses from free no-key data sources, audit their
+websites, and get a CRM-ready CSV + a color-tiered spreadsheet.
+
+It ships with one worked vertical — **`web_design`** (find local businesses with
+no website, a social-only page, or a weak/slow DIY site) — and a clean extension
+point so you can add your own in a single file.
+
+```text
+        ┌── Overture (bulk, national)            ┌── score_fn  → A / B / C + reasons
+data ───┤                              vertical ─┤── enrich_fn → audit each site
+        └── OpenStreetMap (live)                  └── opener_fn → a suggested pitch
+                    │                                      │
+        collect → dedupe → enrich → suppress → score → export → CSV + XLSX
+```
+
+No API keys. No accounts. Runs on your machine.
+
+---
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+
+python -m leadgen --list                      # show available verticals
+python -m leadgen --vertical web_design --market austin_tx --out austin_web
+python -m leadgen --vertical web_design --market "Boulder, Colorado" --sources overture osm
+```
+
+A market is either a **saved key** (`austin_tx`, `phoenix_az`, `tampa_fl`,
+`sonoma_county_ca`) or **any place name we geocode on the fly** (`"Boulder, Colorado"`).
+Output: `<stem>_crm.csv` (flat, import-ready) and `<stem>.xlsx` (Tier A/B/C colored,
+with score, reason, and a suggested opener per lead).
+
+### See it work with zero setup
+
+```bash
+python -c "from leadgen import get_vertical, run_pipeline; \
+run_pipeline(get_vertical('web_design'), market='(demo)', demo=True)"
+```
+
+Demo mode runs the full pipeline on five bundled sample businesses **offline** —
+no network — so you see real tiered output before your first live scrape.
+
+### Point-and-click GUI
+
+No command line needed: pick a vertical + market, optionally upload a CRM to
+de-dupe, hit Run, watch live progress, download the CSV/XLSX. There's a **“Try a
+sample”** button (the offline demo) and a **“Check my connection”** button that
+tests each data source in plain English.
+
+```bash
+pip install -r gui/requirements.txt
+cd gui && ./run.sh            # browser mode  (run.bat on Windows)
+# or a native desktop window:
+python gui/desktop_app.py
+```
+
+It can also be packaged as a single double-click `LeadEngine.exe` (no Python
+needed) — see [`gui/BUILD_EXE.md`](gui/BUILD_EXE.md). See [`gui/README.md`](gui/README.md).
+
+---
+
+## Data sources
+
+| Source | What it is | Needs | License |
+|---|---|---|---|
+| **Overture** | Meta/Microsoft/Amazon's open Places dataset, queried by bbox over S3 | `duckdb` | CC-BY 4.0 |
+| **OpenStreetMap** | live businesses via the Overpass API | nothing extra | ODbL |
+
+Both return the same normalized record shape, so the rest of the pipeline is
+source-agnostic. Pick one or both with `--sources overture osm`.
+
+---
+
+## Add your own vertical
+
+A vertical is a plain dataclass — no subclassing. Drop one file in
+`leadgen/verticals/`, call `register(...)`, and it appears in the CLI and GUI:
+
+```python
+from leadgen import register, Vertical
+
+def _score(rec):
+    score, why = 0, []
+    if not rec.get("website"):
+        score += 60; why.append("NO WEBSITE")
+    return score, ("A" if score >= 40 else "C"), "; ".join(why)
+
+register(Vertical(
+    key="my_vertical",
+    label="What I'm prospecting for",
+    osm_tags=["shop=bakery", "amenity=cafe"],
+    score_fn=_score,
+    columns=[("Tier", "tier"), ("Score", "score"), ("Business", "name"),
+             ("Phone", "phone"), ("Website", "website"), ("Why", "why")],
+))
+```
+
+Optional hooks: `enrich_fn` (visit each site for more signal), `opener_fn` (draft
+a pitch), `suppression_fn` (drop businesses already served by a competitor). The
+full walkthrough — including the optional website-audit and competitor-suppression
+helpers — is in **[`docs/ADD_A_VERTICAL.md`](docs/ADD_A_VERTICAL.md)**, and
+[`leadgen/verticals/web_design.py`](leadgen/verticals/web_design.py) is the
+reference implementation.
+
+---
+
+## Tests
+
+Pure-logic and offline end-to-end tests, no network required:
+
+```bash
+python leadgen/tests/test_engine.py
+python leadgen/tests/test_features.py
+python leadgen/tests/test_heuristics.py
+python gui/test_gui.py          # skips cleanly if Flask isn't installed
+# or, with pytest:
+pytest leadgen/tests -q
+```
+
+---
+
+## Use it responsibly
+
+This is a prospecting tool for **your own outreach**. A few ground rules baked
+into the design and worth stating plainly:
+
+- **It ships no data.** The repo is a tool; lead files are generated per run and
+  are git-ignored. Don't commit scraped contact data to a public repo.
+- **Respect the sources.** Overture is CC-BY (credit "Overture Maps Foundation"
+  in derived work); OSM is ODbL. The website audit fetches each homepage once with
+  a polite, identifiable user-agent — set `LEADGEN_UA` to your own contact string.
+- **Mind the law where you operate.** Reselling scraped personal contact data can
+  trigger data-broker registration (e.g. California's DELETE Act) and anti-spam
+  rules (CAN-SPAM, CASL, GDPR). Generating a call list for your own business is a
+  very different thing from selling one — know which you're doing.
+
+---
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). Data you collect carries its source's license
+(Overture: CC-BY 4.0; OSM: ODbL); attribute accordingly if you publish derived work.

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+!gui/LeadEngine.spec        # this one is source (the build recipe), keep it
+
+# GUI run outputs (generated lead files)
+gui/_output/*
+!gui/_output/.gitkeep
+
+# Scraped / generated lead data — NEVER commit this. The whole point of keeping
+# the repo a *tool* (not a dataset) is privacy + staying out of data-broker
+# territory. Output is regenerated per run.
+*.csv
+*.xlsx
+*.jsonl
+*.parquet
+*.sqlite
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

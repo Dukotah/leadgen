@@ -1,0 +1,8 @@
+# Web UI
+flask>=3.0
+# Engine dependencies (also in leadgen/requirements.txt)
+requests>=2.31
+openpyxl>=3.1
+duckdb>=0.9            # only needed for the Overture (bulk) source
+# Optional: native desktop window instead of a browser tab
+pywebview>=5.0
