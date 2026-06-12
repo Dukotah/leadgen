@@ -11,8 +11,9 @@ env/
 # PyInstaller build artifacts
 build/
 dist/
+# keep the build recipe (gui/LeadEngine.spec); ignore other generated *.spec
 *.spec
-!gui/LeadEngine.spec        # this one is source (the build recipe), keep it
+!gui/LeadEngine.spec
 
 # GUI run outputs (generated lead files)
 gui/_output/*
