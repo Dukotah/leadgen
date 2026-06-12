@@ -1,0 +1,21 @@
+# Coverage configuration for the leadgen package.
+#   coverage run -m pytest leadgen/tests
+#   coverage report
+[run]
+branch = True
+source = leadgen
+omit =
+    leadgen/tests/*
+    leadgen/__main__.py
+    gui/*
+    */gui/*
+
+[report]
+show_missing = True
+skip_covered = False
+precision = 1
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError
+    if TYPE_CHECKING:

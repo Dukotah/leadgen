@@ -165,8 +165,13 @@ def run_pipeline(vertical: Vertical, market: str, *,
                     leads += url_csv_collect(cfg["url_csv"], limit=limit, log=log)
                 except Exception as e:
                     log(f"  URL CSV failed: {e}")
-    # Normalize phones (helps dialing + cross-source dedupe identity).
-    from .quality import cross_source_dedupe, normalize_phone
+    # Drop permanently-closed businesses, then normalize phones (helps dialing +
+    # cross-source dedupe identity).
+    from .quality import cross_source_dedupe, normalize_phone, is_closed
+    before = len(leads)
+    leads = [r for r in leads if not is_closed(r)]
+    if before - len(leads):
+        log(f"  dropped {before - len(leads)} closed businesses")
     for r in leads:
         if r.get("phone"):
             r["phone"] = normalize_phone(r["phone"]) or r["phone"]

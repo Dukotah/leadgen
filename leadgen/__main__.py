@@ -25,6 +25,8 @@ def main(argv=None) -> int:
 
     ap = argparse.ArgumentParser(prog="leadgen", description="Universal lead-gen engine")
     ap.add_argument("--list", action="store_true", help="list available verticals and exit")
+    ap.add_argument("--list-markets", action="store_true",
+                    help="list the saved named markets and exit")
     ap.add_argument("--vertical", help="vertical key (see --list)")
     ap.add_argument("--market", help="named market key or a geocodable place name")
     ap.add_argument("--sources", nargs="+", default=None,
@@ -44,11 +46,31 @@ def main(argv=None) -> int:
                     help="extra output formats to write alongside the CSV/XLSX")
     ap.add_argument("--localfile", help="path to your own CSV/XLSX (with --sources localfile)")
     ap.add_argument("--url-csv", help="URL of a public CSV (with --sources url_csv)")
+    ap.add_argument("--count", "--dry-run", dest="count", action="store_true",
+                    help="collect + dedupe only; print per-source counts and total, "
+                         "then exit without enriching/scoring/exporting")
+    ap.add_argument("--quiet", action="store_true",
+                    help="suppress the per-step progress log")
+    ap.add_argument("--verbose", action="store_true",
+                    help="print all progress detail (default is already verbose)")
+    ap.add_argument("--log-file", help="also tee progress lines to this file")
+    ap.add_argument("--weight", action="append", default=None, metavar="KEY=VALUE",
+                    help="set a tunable weight (repeatable), passed to the vertical "
+                         "via config_override['weights']")
+    ap.add_argument("--json-summary", action="store_true",
+                    help="after the run, print a one-line JSON summary to stdout")
     args = ap.parse_args(argv)
 
     if args.list:
         for k, v in sorted(all_verticals().items()):
             print(f"  {k:18s} {v.label}")
+        return 0
+
+    if args.list_markets:
+        from .geo import MARKETS
+        for k in sorted(MARKETS):
+            s, w, n, e = MARKETS[k]
+            print(f"  {k:22s} bbox=({s}, {w}, {n}, {e})")
         return 0
 
     # Config file: CLI flags win; the file fills the gaps.
@@ -73,11 +95,63 @@ def main(argv=None) -> int:
     if args.url_csv:
         override["url_csv"] = args.url_csv
 
+    # --weight KEY=VALUE (repeatable) -> config_override["weights"].
+    # Values are coerced to int/float when they look numeric, else kept as str.
+    if args.weight:
+        weights = dict(override.get("weights") or {})
+        for item in args.weight:
+            if "=" not in item:
+                ap.error(f"--weight expects KEY=VALUE, got {item!r}")
+            k, _, v = item.partition("=")
+            k = k.strip()
+            v = v.strip()
+            try:
+                weights[k] = int(v)
+            except ValueError:
+                try:
+                    weights[k] = float(v)
+                except ValueError:
+                    weights[k] = v
+        override["weights"] = weights
+
     try:
         vertical = get_vertical(vertical_key)
     except KeyError as e:
         print(e, file=sys.stderr)
         return 2
+
+    from .logsetup import make_logger
+    log = make_logger(quiet=args.quiet, verbose=args.verbose, log_file=args.log_file)
+
+    # --count / --dry-run: collect + dedupe only. We disable enrichment and pass
+    # no out_stem so nothing is written; run_pipeline still scores, but the cost
+    # we care about (per-site enrichment + export) is skipped. We then report a
+    # per-source breakdown computed from the returned leads' 'source' field.
+    if args.count:
+        leads = run_pipeline(
+            vertical, market,
+            sources=sources, limit=limit,
+            enrich=False, enrich_cap=enrich_cap,
+            out_stem=None,
+            config_override=override or None,
+            log=log,
+        )
+        by_source: dict[str, int] = {}
+        for r in leads:
+            src = r.get("source") or "unknown"
+            by_source[src] = by_source.get(src, 0) + 1
+        print("Per-source counts:")
+        for src in sorted(by_source):
+            print(f"  {src:12s} {by_source[src]}")
+        print(f"  {'TOTAL':12s} {len(leads)}")
+        if args.json_summary:
+            import json
+            print(json.dumps({
+                "vertical": vertical_key, "market": market,
+                "sources": list(sources), "total": len(leads),
+                "by_source": by_source,
+            }, separators=(",", ":")))
+        return 0
 
     leads = run_pipeline(
         vertical, market,
@@ -85,6 +159,7 @@ def main(argv=None) -> int:
         enrich=enrich, enrich_cap=enrich_cap,
         out_stem=args.out or f"{vertical_key}_{market}",
         config_override=override or None,
+        log=log,
     )
 
     # Extra output formats, written next to the CSV/XLSX stem.
@@ -106,6 +181,25 @@ def main(argv=None) -> int:
         if "per-tier" in args.format:
             for t, p in exporters.write_per_tier(leads, cols, stem).items():
                 print(f"  -> tier {t}: {p}")
+
+    if args.json_summary:
+        import json
+        tiers = {"A": 0, "B": 0, "C": 0}
+        for r in leads:
+            t = r.get("tier", "C")
+            tiers[t] = tiers.get(t, 0) + 1
+        outs = run_pipeline.last_outputs or ()
+        files = {
+            "csv": outs[0] if len(outs) > 0 else None,
+            "xlsx": outs[1] if len(outs) > 1 else None,
+        }
+        print(json.dumps({
+            "vertical": vertical_key, "market": market,
+            "sources": list(sources), "total": len(leads),
+            "tiers": {"A": tiers.get("A", 0), "B": tiers.get("B", 0),
+                      "C": tiers.get("C", 0)},
+            "files": files,
+        }, separators=(",", ":")))
     return 0
 
 

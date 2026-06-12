@@ -287,6 +287,42 @@ td a{color:var(--accent);text-decoration:none}td a:hover{text-decoration:underli
   box-shadow:0 4px 14px rgba(0,0,0,.15);min-width:200px;max-height:300px;overflow:auto}
 #colpanel label{display:block;font-size:13px;padding:3px 0;cursor:pointer;white-space:nowrap;font-weight:400;color:var(--fg)}
 #colpanel input{margin-right:6px}
+/* Settings panel */
+details.settings>summary{cursor:pointer;font-weight:600;color:var(--accent);font-size:13.5px;padding:6px 0}
+.setgrid{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}.setgrid>div{flex:1;min-width:200px}
+.setchecks label{display:block;font-size:13px;padding:2px 0;cursor:pointer;font-weight:400;color:var(--fg)}
+.setchecks input{margin-right:6px;width:auto}
+.setactions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.setactions .saved{color:var(--green);font-size:12.5px;font-weight:600}
+/* Run queue */
+.queuegrid{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.queuegrid>div{flex:1;min-width:160px}
+.qlist{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.qitem{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;
+  padding:7px 11px;background:var(--panel);font-size:13px}
+.qitem .qmeta{flex:1}.qitem .qmeta b{color:var(--accent)}
+.qitem .qstate{font-size:11.5px;color:var(--muted2);font-weight:600}
+.qitem.active{border-color:var(--blue);box-shadow:inset 3px 0 0 0 var(--blue)}
+.qitem.done{opacity:.65}.qitem.done .qstate{color:var(--green)}
+.qitem.failed .qstate{color:#b04a52}
+.qitem button.qrm{background:none;border:1px solid var(--field-border);color:var(--muted);
+  padding:1px 7px;font-size:12px;border-radius:5px;cursor:pointer;font-weight:600}
+/* Per-source tally + timer */
+#runmeter{display:none;margin-top:10px;flex-wrap:wrap;gap:8px;align-items:center}
+#runmeter .chip{background:var(--panel);border:1px solid var(--border);border-radius:20px;
+  padding:4px 11px;font-size:12.5px;color:var(--fg)}
+#runmeter .chip b{color:var(--accent)}
+#runtimer{font-size:12.5px;color:var(--muted2);font-weight:600}
+/* First-run tour */
+#tour{display:none;position:fixed;inset:0;background:rgba(10,16,24,.55);z-index:100}
+#tourcard{position:absolute;max-width:300px;background:var(--panel);color:var(--fg);
+  border:1px solid var(--border);border-radius:11px;padding:15px 17px;box-shadow:0 8px 30px rgba(0,0,0,.35);font-size:13.5px;line-height:1.5}
+#tourcard h3{margin:0 0 6px;color:var(--accent);font-size:15px}
+#tourcard .tnav{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+#tourcard .tnav .tstep{color:var(--muted2);font-size:12px}
+#tourcard button{padding:6px 14px;font-size:13px}
+#tourcard button.tskip{background:none;color:var(--muted);border:none;padding:6px 4px;font-weight:600}
+.tourhi{position:relative;z-index:101;box-shadow:0 0 0 3px var(--blue),0 0 0 9px rgba(31,78,120,.3);border-radius:8px}
 </style></head><body>
 <button id="themetoggle" type="button" title="Toggle dark mode">🌙 Dark</button>
 <h1>Lead Engine</h1>
@@ -295,6 +331,36 @@ td a{color:var(--accent);text-decoration:none}td a:hover{text-decoration:underli
 <div class="firsttime">
   <b>First time?</b> Click <b>“Try a sample”</b> at the bottom — it runs instantly with no internet and shows exactly what you’ll get. Then fill in the boxes below for a real search.
 </div>
+
+<details class="adv settings" id="settingswrap">
+  <summary>⚙ Settings &amp; defaults</summary>
+  <div class="setgrid">
+    <div>
+      <label class="fld">Default data sources</label>
+      <div class="setchecks" id="set_sources">
+        <label><input type="checkbox" data-src="overture"> Nationwide business directory</label>
+        <label><input type="checkbox" data-src="osm"> Live map data</label>
+        <label><input type="checkbox" data-src="socrata"> New-business records (open data)</label>
+        <label><input type="checkbox" data-src="npi"> Healthcare providers (NPI)</label>
+        <label><input type="checkbox" data-src="foursquare"> Foursquare (deep · slow)</label>
+      </div>
+      <div class="hint">Applied to the run form when you open the page. Picking a vertical may still override these.</div>
+    </div>
+    <div>
+      <label class="fld">Default deep-check cap</label>
+      <input type="number" id="set_enrich_cap" min="0" placeholder="150">
+      <div class="hint">Pre-fills “Deep-check at most this many” under Advanced options.</div>
+      <label class="fld">Crawler contact string (User-Agent)</label>
+      <input type="text" id="set_ua" placeholder="LeadEngine/1.0 (you@example.com)">
+      <div class="hint">Informational — a polite contact so site owners know who is crawling. Stored locally only.</div>
+    </div>
+  </div>
+  <div class="setactions">
+    <button type="button" id="set_save">Save defaults</button>
+    <button type="button" class="ghost" id="set_clear">Reset</button>
+    <span class="saved" id="set_saved" style="display:none">Saved ✓</span>
+  </div>
+</details>
 
 <div id="recentwrap" style="display:none">
   <fieldset><legend>Recent runs <span class="opt">(this session)</span></legend>
@@ -370,9 +436,24 @@ td a{color:var(--accent);text-decoration:none}td a:hover{text-decoration:underli
     <button type="submit" id="go">🔍 Find leads</button>
     <button type="button" id="demo" class="ghost">▶ Try a sample (no internet needed)</button>
     <button type="button" id="check" class="ghost">📡 Check my connection</button>
+    <button type="button" id="enqueue" class="ghost">➕ Add to queue</button>
   </div>
   <div id="checkout"></div>
+  <div id="runmeter">
+    <span id="runtimer">⏱ 0:00</span>
+    <span id="runchips"></span>
+  </div>
 </form>
+
+<details class="adv settings" id="queuewrap" style="display:none">
+  <summary>📋 Run queue <span class="opt" id="queuecount"></span></summary>
+  <div class="hint" style="margin:4px 0 0">Queued runs use the current sources / advanced options and run one after another.</div>
+  <ul class="qlist" id="qlist"></ul>
+  <div class="setactions">
+    <button type="button" id="queuerun">▶ Run queue</button>
+    <button type="button" class="ghost" id="queueclear">Clear queue</button>
+  </div>
+</details>
 
 <div id="summary" class="row">
   <div class="stat"><b id="s_total">0</b>leads found</div>
@@ -397,6 +478,18 @@ td a{color:var(--accent);text-decoration:none}td a:hover{text-decoration:underli
   <span class="hint" id="exportcount"></span>
 </div>
 <div class="tablewrap" id="tablewrap"><table id="preview"></table></div>
+
+<div id="tour">
+  <div id="tourcard">
+    <h3 id="tourtitle"></h3>
+    <div id="tourbody"></div>
+    <div class="tnav">
+      <button type="button" class="tskip" id="tourskip">Skip tour</button>
+      <span class="tstep" id="tourstep"></span>
+      <button type="button" id="tournext">Next →</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── Dark mode: respect prefers-color-scheme on first load, persist choice. ──
@@ -471,16 +564,21 @@ function baseBody(){
   };
 }
 
+let lastBody=null;  // last run's request body, for the Retry button
+
 async function startRun(body){
+  lastBody=body;
   go.disabled=true; demoBtn.disabled=true; go.textContent="Working…";
   logwrap.style.display="block"; statusEl.style.display="block"; statusEl.textContent="Starting…"; checkout.innerHTML="";
   summary.style.display="none"; dls.style.display="none"; legend.style.display="none";
   tablewrap.style.display="none"; table.style.display="none";
+  startMeter();
   const r=await fetch("/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   const j=await r.json();
   if(j.error){ checkout.innerHTML=`<div class="banner bad">${esc(j.error)}</div>`;
-    go.disabled=false; demoBtn.disabled=false; go.textContent=GO_LABEL; return; }
-  poll(j.job_id);
+    go.disabled=false; demoBtn.disabled=false; go.textContent=GO_LABEL; stopMeter();
+    return Promise.resolve({error:j.error}); }
+  return poll(j.job_id);
 }
 
 form.addEventListener("submit", e=>{
@@ -510,14 +608,25 @@ checkBtn.addEventListener("click", async ()=>{
 });
 
 function poll(jid){
+ return new Promise(resolve=>{
   const t=setInterval(async ()=>{
     const r=await fetch("/progress/"+jid); const j=await r.json();
     statusEl.textContent=j.log.join("\\n"); statusEl.scrollTop=statusEl.scrollHeight;
+    updateMeter(j.log);
     if(j.done){
       clearInterval(t); go.disabled=false; demoBtn.disabled=false; go.textContent=GO_LABEL;
-      loadRecent();
-      if(j.error){ checkout.innerHTML=`<div class="banner bad">${esc(j.error)}</div>`; }
-      if(j.notice){ checkout.innerHTML=`<div class="banner warn">${esc(j.notice)}</div>`; }
+      stopMeter(); loadRecent();
+      // Mid-run recovery: error OR a source reported "failed" in the log → retry banner.
+      const logText=(j.log||[]).join("\\n");
+      const sourceFailed=/failed/i.test(logText);
+      if(j.error || sourceFailed){
+        const msg=j.error || "A data source failed during this run — results may be incomplete.";
+        checkout.innerHTML=`<div class="banner bad" id="retrybanner">${esc(msg)} `
+          +`<button type="button" class="ghost" id="retrybtn" style="padding:5px 12px;margin-left:8px">↻ Retry</button></div>`;
+        const rb=document.getElementById("retrybtn");
+        if(rb) rb.addEventListener("click", ()=>{ if(lastBody) startRun(Object.assign({}, lastBody)); });
+      }
+      else if(j.notice){ checkout.innerHTML=`<div class="banner warn">${esc(j.notice)}</div>`; }
       if(j.stats){
         summary.style.display="flex";
         s_total.textContent=j.stats.total; s_A.textContent=j.stats.A;
@@ -535,8 +644,10 @@ function poll(jid){
           +"The full list (with phone, website, why it's a lead, and a suggested opener) is in the downloads above.";
         renderTable(j.leads, j.columns);
       }
+      resolve({error:j.error, sourceFailed, stats:j.stats});
     }
   }, 700);
+ });
 }
 
 let curLeads=[], curCols=[];
@@ -724,7 +835,181 @@ function saveMarket(m){
   }catch(e){}
 }
 
-loadSavedMarkets(); loadRecent();
+// ─────────────────────────── Settings panel ────────────────────────────────
+// Default sources, default enrich cap, crawler UA — persisted in localStorage.
+const SET_KEY="leadgen_settings";
+function loadSettings(){ try{ return JSON.parse(localStorage.getItem(SET_KEY)||"null"); }catch(e){ return null; } }
+function applySettings(s){
+  if(!s) return;
+  if(Array.isArray(s.sources)){
+    document.querySelectorAll("#set_sources input").forEach(cb=>cb.checked=s.sources.includes(cb.dataset.src));
+    // Mirror onto the run form's source checkboxes.
+    const map={overture:"src_overture",osm:"src_osm",socrata:"src_socrata",npi:"src_npi",foursquare:"src_foursquare"};
+    Object.entries(map).forEach(([src,id])=>{ const el=document.getElementById(id); if(el) el.checked=s.sources.includes(src); });
+  }
+  if(s.enrich_cap!=null && s.enrich_cap!==""){
+    document.getElementById("set_enrich_cap").value=s.enrich_cap;
+    document.getElementById("enrich_cap").value=s.enrich_cap;
+  }
+  if(s.ua!=null) document.getElementById("set_ua").value=s.ua;
+}
+function readSettingsForm(){
+  const sources=[...document.querySelectorAll("#set_sources input")].filter(cb=>cb.checked).map(cb=>cb.dataset.src);
+  return { sources, enrich_cap:document.getElementById("set_enrich_cap").value,
+           ua:document.getElementById("set_ua").value };
+}
+document.getElementById("set_save").addEventListener("click", ()=>{
+  const s=readSettingsForm();
+  try{ localStorage.setItem(SET_KEY, JSON.stringify(s)); }catch(e){}
+  applySettings(s);
+  const saved=document.getElementById("set_saved");
+  saved.style.display="inline"; setTimeout(()=>saved.style.display="none",1500);
+});
+document.getElementById("set_clear").addEventListener("click", ()=>{
+  try{ localStorage.removeItem(SET_KEY); }catch(e){}
+  document.querySelectorAll("#set_sources input").forEach(cb=>cb.checked=false);
+  document.getElementById("set_enrich_cap").value="";
+  document.getElementById("set_ua").value="";
+});
+// Apply saved settings on load — but a vertical change can still re-set sources via syncVertical.
+applySettings(loadSettings());
+
+// ─────────────────────────── Run queue ─────────────────────────────────────
+// Queue (vertical, market) combos and run them sequentially through /run + /progress.
+let queue=[];          // {vertical, vlabel, market}
+let queueRunning=false;
+const qlist=document.getElementById("qlist"), queuewrap=document.getElementById("queuewrap");
+function renderQueue(){
+  document.getElementById("queuecount").textContent = queue.length ? `(${queue.length})` : "";
+  queuewrap.style.display = queue.length ? "block" : "none";
+  if(queue.length && !queueRunning) queuewrap.open=true;
+  qlist.innerHTML=queue.map((q,i)=>{
+    const st=q.state||"queued";
+    const cls=st==="active"?"active":st==="done"?"done":st==="failed"?"failed":"";
+    const label={queued:"queued",active:"running…",done:"done ✓",failed:"failed"}[st]||st;
+    return `<li class="qitem ${cls}"><span class="qmeta"><b>${esc(q.vlabel)}</b> · ${esc(q.market)}</span>`
+      +`<span class="qstate">${esc(label)}</span>`
+      +(queueRunning?"":`<button type="button" class="qrm" data-i="${i}">✕</button>`)+`</li>`;
+  }).join("");
+  qlist.querySelectorAll("button.qrm").forEach(b=>b.addEventListener("click", ()=>{
+    queue.splice(+b.dataset.i,1); renderQueue();
+  }));
+}
+document.getElementById("enqueue").addEventListener("click", ()=>{
+  const market=document.getElementById("market").value.trim();
+  if(!market){ alert("Type an area before adding to the queue."); return; }
+  const v=VERTS.find(x=>x.key===vsel.value);
+  queue.push({vertical:vsel.value, vlabel:(v&&v.label)||vsel.value, market, state:"queued"});
+  saveMarket(market); renderQueue();
+});
+document.getElementById("queueclear").addEventListener("click", ()=>{
+  if(queueRunning) return; queue=[]; renderQueue();
+});
+document.getElementById("queuerun").addEventListener("click", runQueue);
+async function runQueue(){
+  if(queueRunning || !queue.length) return;
+  queueRunning=true; renderQueue();
+  // Sources / advanced options taken once from the form (baseBody) and reused per combo.
+  const tmpl=baseBody(); tmpl.demo=false;
+  for(const q of queue){
+    if(q.state==="done") continue;
+    q.state="active"; renderQueue();
+    const body=Object.assign({}, tmpl, {vertical:q.vertical, market:q.market});
+    let res;
+    try{ res=await startRun(body); }catch(e){ res={error:String(e)}; }
+    q.state=(res&&(res.error||res.sourceFailed))?"failed":"done";
+    renderQueue();
+  }
+  queueRunning=false; renderQueue();
+}
+
+// ────────────────── Per-source progress / ETA + elapsed timer ───────────────
+// Parse streaming log lines like "  Overture: 412 businesses" / "  NPI: 128 providers…"
+let meterTimer=null, meterStart=0;
+const SOURCE_LINE=/^\\s*([A-Za-z][A-Za-z0-9 ]*?):\\s*([\\d,]+)\\b/;
+function startMeter(){
+  meterStart=Date.now();
+  document.getElementById("runmeter").style.display="flex";
+  document.getElementById("runchips").innerHTML="";
+  document.getElementById("runtimer").textContent="⏱ 0:00";
+  clearInterval(meterTimer);
+  meterTimer=setInterval(()=>{
+    const s=Math.floor((Date.now()-meterStart)/1000);
+    document.getElementById("runtimer").textContent=`⏱ ${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+  }, 500);
+}
+function updateMeter(log){
+  if(!log) return;
+  const tally={};
+  for(let line of log){
+    line=line.replace(/^\\[\\d{2}:\\d{2}:\\d{2}\\]\\s*/,"");  // drop timestamp prefix
+    const m=line.match(SOURCE_LINE);
+    if(m){
+      const name=m[1].trim(), n=parseInt(m[2].replace(/,/g,""),10);
+      if(name && !isNaN(n)) tally[name]=n;   // last value for a source wins
+    }
+  }
+  const chips=Object.entries(tally).map(([k,v])=>`<span class="chip"><b>${esc(k)}</b> ${v}</span>`).join("");
+  document.getElementById("runchips").innerHTML=chips;
+}
+function stopMeter(){ clearInterval(meterTimer); meterTimer=null; }
+
+// ─────────────────────────── First-run tour ────────────────────────────────
+const TOUR_KEY="leadgen_tour_done";
+const TOUR_STEPS=[
+  {sel:"#vertical", title:"1 · Pick what to find",
+   body:"Start here — choose the type of business you want to prospect for."},
+  {sel:"#market", title:"2 · Set the area",
+   body:"Type any city, county, or metro, like “Austin, Texas”."},
+  {sel:"#demo", title:"3 · Try a sample",
+   body:"No internet? Click this to see exactly what the results look like, instantly."},
+];
+let tourIdx=0;
+function tourSeen(){ try{ return localStorage.getItem(TOUR_KEY)==="1"; }catch(e){ return true; } }
+function endTour(){
+  try{ localStorage.setItem(TOUR_KEY,"1"); }catch(e){}
+  document.getElementById("tour").style.display="none";
+  document.querySelectorAll(".tourhi").forEach(el=>el.classList.remove("tourhi"));
+}
+function showTourStep(){
+  document.querySelectorAll(".tourhi").forEach(el=>el.classList.remove("tourhi"));
+  const step=TOUR_STEPS[tourIdx];
+  const target=document.querySelector(step.sel);
+  document.getElementById("tourtitle").textContent=step.title;
+  document.getElementById("tourbody").textContent=step.body;
+  document.getElementById("tourstep").textContent=`${tourIdx+1} / ${TOUR_STEPS.length}`;
+  document.getElementById("tournext").textContent=(tourIdx===TOUR_STEPS.length-1)?"Got it":"Next →";
+  const card=document.getElementById("tourcard");
+  if(target){
+    card.style.transform="none";
+    target.classList.add("tourhi");
+    if(target.scrollIntoView) target.scrollIntoView({block:"center"});
+    const rb=target.getBoundingClientRect();
+    let top=rb.bottom+10, left=rb.left;
+    // Keep the card on-screen.
+    requestAnimationFrame(()=>{
+      const cw=card.offsetWidth, ch=card.offsetHeight;
+      if(left+cw>window.innerWidth-12) left=Math.max(12, window.innerWidth-cw-12);
+      if(top+ch>window.innerHeight-12) top=Math.max(12, rb.top-ch-10);
+      card.style.left=left+"px"; card.style.top=top+"px";
+    });
+  } else {
+    card.style.left="50%"; card.style.top="40%"; card.style.transform="translate(-50%,-50%)";
+  }
+}
+document.getElementById("tournext").addEventListener("click", ()=>{
+  tourIdx++;
+  if(tourIdx>=TOUR_STEPS.length) endTour(); else showTourStep();
+});
+document.getElementById("tourskip").addEventListener("click", endTour);
+function maybeStartTour(){
+  if(tourSeen()) return;
+  tourIdx=0;
+  document.getElementById("tour").style.display="block";
+  showTourStep();
+}
+
+loadSavedMarkets(); loadRecent(); maybeStartTour();
 </script>
 </body></html>"""
 

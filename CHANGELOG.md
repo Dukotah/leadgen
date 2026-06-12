@@ -7,6 +7,22 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Five niche verticals: `auto_services`, `fitness_wellness`, `pet_services`,
+  `beauty`, `professional_services` (**19 total**), plus a vertical scaffolder
+  (`scripts/new_vertical.py`).
+- More CLI: `--count`/`--dry-run`, `--list-markets`, `--quiet`/`--verbose`,
+  `--log-file`, `--weight KEY=VALUE`, `--json-summary` (+ `leadgen/logsetup.py`).
+- `leadgen/scoring.py` (0–100 normalization, tiering, reason tags, ScoreBuilder)
+  and more `signals` (page weight, robust mobile-friendly check).
+- `leadgen/quality.py` additions: address parsing, closed-business detection
+  (now filtered in the pipeline), chain detection, field-confidence,
+  do-not-contact list, cross-run dedupe.
+- `leadgen/net.py` (retry/backoff, per-host rate limiter, parallel collect),
+  `leadgen/store.py` (SQLite run history), `scripts/benchmark.py`.
+- `leadgen/templates.py` (outreach opener templates) and more exporters: TSV,
+  de-duplicated master-CSV append, completion hook.
+- Offline recorded-response tests for every network source, `.coveragerc`,
+  `docs/TESTING.md`.
 - Six more verticals: `ecommerce_ready`, `booking_gap`, `outdated_site`,
   `social_media_mgmt`, `new_business`, `restaurant_menu_gap` (**14 total**).
 - Four more no-key sources via `leadgen/extra_sources.py`: `wikidata`, `ckan`,

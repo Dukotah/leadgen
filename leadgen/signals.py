@@ -4,12 +4,14 @@ optional base URL), each independently testable OFFLINE with no network.
 
 These extract conversion/outreach signals a vertical's enrich_fn can attach to a
 lead without any third-party API or new dependency (stdlib re/socket/urllib only):
-  - find_emails():     plausible contact emails, junk filtered, best-first
-  - copyright_year():  the footer "© 2019" year (a "stale site" proxy)
-  - has_ecommerce():   a store/cart is present (Shopify, Woo, "add to cart", …)
-  - has_booking():     online scheduling is present (Calendly, "book now", …)
-  - detect_socials():  the social profiles linked from the page
-  - domain_resolves(): a no-dependency deliverability proxy (DNS A-record only)
+  - find_emails():       plausible contact emails, junk filtered, best-first
+  - copyright_year():    the footer "© 2019" year (a "stale site" proxy)
+  - has_ecommerce():     a store/cart is present (Shopify, Woo, "add to cart", …)
+  - has_booking():       online scheduling is present (Calendly, "book now", …)
+  - detect_socials():    the social profiles linked from the page
+  - domain_resolves():   a no-dependency deliverability proxy (DNS A-record only)
+  - page_weight_bytes(): byte size of the HTML (a crude page-weight proxy)
+  - is_mobile_friendly():viewport meta + responsive hints (more robust than meta)
 
 Every function tolerates empty/None input and never raises.
 """
@@ -290,3 +292,57 @@ def domain_resolves(url_or_domain: str) -> bool:
         return True
     except Exception:
         return False
+
+
+# ── Page weight (performance proxy) ───────────────────────────────────────────
+
+def page_weight_bytes(html: str) -> int:
+    """Byte size of `html` (UTF-8 encoded) — a crude page-weight proxy.
+
+    A heavy homepage HTML payload (lots of inline scripts/styles/markup) is a
+    weak signal of a bloated, slow-to-render site. Returns 0 for empty/None.
+    This counts only the HTML document itself, not its linked assets.
+    """
+    if not html:
+        return 0
+    return len(html.encode("utf-8", "replace"))
+
+
+# ── Mobile-friendliness (responsive heuristic) ────────────────────────────────
+
+# A viewport meta tag that opts into responsive scaling.
+_VIEWPORT_RE = re.compile(
+    r'<meta[^>]+name=["\']?viewport["\']?[^>]*>', re.IGNORECASE)
+
+# Responsive hints beyond the bare meta tag: CSS media queries, fluid widths,
+# or a class from a known responsive/mobile-first framework.
+_RESPONSIVE_HINTS = re.compile(
+    r"@media\b"                                   # CSS media query
+    r"|max-width\s*:"                             # fluid breakpoint in CSS
+    r"|min-width\s*:"
+    r"|\bcol-(?:xs|sm|md|lg|xl)\b"                # Bootstrap grid
+    r"|\b(?:container|row)-fluid\b"               # Bootstrap fluid
+    r"|\bflex-wrap\b"                             # flexbox responsive
+    r"|\bgrid-cols-\d"                            # Tailwind grid
+    r"|\b(?:sm|md|lg|xl):[a-z]"                   # Tailwind responsive prefixes
+    r'|srcset='                                   # responsive images
+    r"|\bw-full\b|\bw-100\b"                       # full-width utility classes
+    r"|media=[\"']?(?:screen[^\"'>]*and|\([^\"'>]*width)",  # <link media> query
+    re.IGNORECASE)
+
+
+def is_mobile_friendly(html: str) -> bool:
+    """True if `html` is plausibly mobile-responsive: a viewport meta tag is
+    present AND there are responsive hints (a CSS media query / max-width /
+    min-width rule, responsive images, or a known responsive-framework class
+    such as Bootstrap's col-md-* or Tailwind's md:/lg: prefixes).
+
+    Stricter than the bare viewport meta alone (which audit.mobile_viewport
+    already reports): a page can declare a viewport yet still ship a fixed-width
+    desktop layout. Returns False for empty/None and never raises.
+    """
+    if not html:
+        return False
+    if not _VIEWPORT_RE.search(html):
+        return False
+    return bool(_RESPONSIVE_HINTS.search(html))
