@@ -6,67 +6,58 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
-### Added
-- Five niche verticals: `auto_services`, `fitness_wellness`, `pet_services`,
-  `beauty`, `professional_services` (**19 total**), plus a vertical scaffolder
-  (`scripts/new_vertical.py`).
-- More CLI: `--count`/`--dry-run`, `--list-markets`, `--quiet`/`--verbose`,
-  `--log-file`, `--weight KEY=VALUE`, `--json-summary` (+ `leadgen/logsetup.py`).
-- `leadgen/scoring.py` (0–100 normalization, tiering, reason tags, ScoreBuilder)
-  and more `signals` (page weight, robust mobile-friendly check).
-- `leadgen/quality.py` additions: address parsing, closed-business detection
-  (now filtered in the pipeline), chain detection, field-confidence,
-  do-not-contact list, cross-run dedupe.
-- `leadgen/net.py` (retry/backoff, per-host rate limiter, parallel collect),
-  `leadgen/store.py` (SQLite run history), `scripts/benchmark.py`.
-- `leadgen/templates.py` (outreach opener templates) and more exporters: TSV,
-  de-duplicated master-CSV append, completion hook.
-- Offline recorded-response tests for every network source, `.coveragerc`,
-  `docs/TESTING.md`.
-- Six more verticals: `ecommerce_ready`, `booking_gap`, `outdated_site`,
-  `social_media_mgmt`, `new_business`, `restaurant_menu_gap` (**14 total**).
-- Four more no-key sources via `leadgen/extra_sources.py`: `wikidata`, `ckan`,
-  `localfile` (your own CSV/XLSX), `url_csv` (a public CSV URL) — wired into the
-  pipeline and CLI.
-- Config files: `leadgen.toml` support (`--config`, auto-found) with `load_config`
-  / `merge_config`; see `leadgen.example.toml`.
-- Extra export formats (`--format`): JSON Lines, JSON, vCard, per-tier CSVs, and a
-  Markdown report — `leadgen/exporters.py` (+ CRM header presets).
-- `leadgen/cache.py` — optional on-disk TTL cache for HTTP responses.
-- GUI: dark mode, sortable/choosable columns, click-to-call / mailto + copy,
-  export-the-filtered-view, and mark-contacted/not-interested (localStorage).
-- Docs site scaffolding (`mkdocs.yml`, `docs/index.md`), `mypy.ini`, screenshots
-  placeholder. `.gitignore` now also blocks `*.json`/`*.vcf`/`*.leads.md` and real
-  `leadgen.toml` configs.
-- Five more verticals: `restaurants`, `home_services`, `no_ssl`,
-  `healthcare_web`, `directory_only`.
-- `leadgen/signals.py` — website-signal helpers (email finder, copyright-year,
-  e-commerce / booking detection, social-handle extraction, domain-resolves).
-- `leadgen/quality.py` — phone normalization, junk-name filtering, haversine /
-  geo-proximity, and cross-source dedupe (merge by phone, or same-name + nearby).
-- Pipeline now normalizes phone numbers and de-duplicates **across** sources.
-- Packaging: `pyproject.toml` (pip/pipx install + ruff/black config), `Dockerfile`,
-  `.dockerignore`, `.pre-commit-config.yaml`.
-- Project health: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
-  issue/PR templates, and a CI workflow that runs the test suites on every push/PR.
-- Docs: `docs/ROADMAP.md` (100 build-on items), `docs/RESPONSIBLE_USE.md`,
-  `docs/COOKBOOK.md`.
+_Nothing yet — see the [roadmap](docs/ROADMAP.md)._
 
 ## [1.0.0] - 2026-06-11
 
-### Added
-- Universal pipeline: collect → dedupe → enrich → suppress → score → export,
-  driven by swappable **verticals** (a dataclass + `register()`).
-- Verticals: `web_design`, `seo_audit`, `social_only`.
-- Six no-key data sources: `overture`, `osm` (broadened to all shops/crafts/
-  offices + key amenities), `socrata`, `npi`, `arcgis`, `foursquare` (deep/slow).
-- Website auditing (HTTPS / mobile / load / DIY-builder) and optional
-  competitor-suppression + CRM de-dupe.
-- Three ways to run: Python library, CLI (`python -m leadgen`), and a Flask /
-  desktop GUI; plus an offline demo mode.
-- CRM-ready CSV + color-tiered XLSX export.
-- Cross-platform desktop-app build workflow (Windows / macOS / Linux) and an
-  offline test suite.
+The first release. A universal, **key-free** local-business lead engine.
+
+### Engine
+- Pipeline: collect → dedupe → enrich → suppress → score → export, driven by
+  swappable **verticals** (a dataclass + `register()`).
+- Phone normalization, closed-business filtering, and **cross-source dedupe**
+  (merge by phone, or same-name + nearby). Optional helpers: address parsing,
+  chain detection, field-confidence, do-not-contact lists, cross-run dedupe.
+- Website auditing (HTTPS / mobile / load / DIY-builder), website signals (email
+  finder, copyright-year, e-commerce / booking detection, social handles), and a
+  0–100 scoring helper with reason tags.
+- Reliability + history: retry/backoff, per-host rate limiting, parallel collect,
+  an optional TTL HTTP cache, and a SQLite run store.
+
+### 19 verticals
+`web_design`, `seo_audit`, `social_only`, `restaurants`, `home_services`,
+`no_ssl`, `healthcare_web`, `directory_only`, `ecommerce_ready`, `booking_gap`,
+`outdated_site`, `social_media_mgmt`, `new_business`, `restaurant_menu_gap`,
+`auto_services`, `fitness_wellness`, `pet_services`, `beauty`,
+`professional_services` — plus a scaffolder (`scripts/new_vertical.py`).
+
+### 10 no-key data sources
+`overture`, `osm` (all shops/crafts/offices + key amenities), `socrata`, `npi`
+(healthcare), `arcgis`, `foursquare` (deep/slow mirror), `wikidata`, `ckan`,
+`localfile` (your own CSV/XLSX), `url_csv` (a public CSV URL).
+
+### Ways to run
+- Python library, CLI (`python -m leadgen`, with `--count`, `--list-markets`,
+  `--format`, `--config`, `--weight`, `--json-summary`, quiet/verbose/log-file),
+  a Flask / desktop GUI, and an offline demo.
+- GUI: live search, sortable/choosable columns, recent runs, run queue, dark
+  mode, settings, first-run tour, click-to-call / copy, mark-contacted,
+  export-the-filtered-view.
+
+### Output & config
+- CRM-ready CSV + color-tiered XLSX, plus JSON/JSONL, vCard, per-tier splits, a
+  Markdown report, TSV, CRM-header presets, de-duplicated master-CSV append, and
+  outreach opener templates.
+- `leadgen.toml` config files (see `leadgen.example.toml`).
+
+### Packaging & project health
+- `pyproject.toml` (pip/pipx + ruff/black), `Dockerfile`, pre-commit, mypy,
+  cross-platform build workflow, and CI running the suites on every push/PR.
+- Docs: README, COOKBOOK, ADD_A_VERTICAL, RESPONSIBLE_USE, ROADMAP (100 items),
+  TESTING; CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, issue/PR templates.
+- ~245 offline tests across 21 suites (incl. recorded-response source tests) + a
+  GUI end-to-end test. The repo ships **no scraped data** (enforced by
+  `.gitignore`).
 
 [Unreleased]: https://github.com/Dukotah/leadgen/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/Dukotah/leadgen/releases/tag/v1.0.0
