@@ -202,30 +202,38 @@ INDEX_HTML = """<!doctype html><html><head><meta charset="utf-8">
 <title>Lead Engine</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-:root{--blue:#1F4E78;--green:#28a745}
+:root{--blue:#1F4E78;--green:#28a745;
+  --bg:#fafbfc;--fg:#1d2733;--panel:#fff;--border:#dde2e8;--border2:#e3e8ee;
+  --muted:#667;--muted2:#8a93a0;--field-border:#c4ccd6;--th:#eef2f7;--accent:#1F4E78;
+  --tierA:#e8f8ec;--tierB:#fff8e1;--tierC:#fdecee;--ghosthover:#eef2f7;--code-bg:#0d1b2a;--code-fg:#c8e1ff}
+html[data-theme=dark]{--blue:#5a9bd8;--green:#3fbf5f;--accent:#7fb6e6;
+  --bg:#11161d;--fg:#dfe6ee;--panel:#1a212b;--border:#2c3742;--border2:#2c3742;
+  --muted:#9aa7b4;--muted2:#7d8a97;--field-border:#3a4754;--th:#222c38;
+  --tierA:#173324;--tierB:#332c14;--tierC:#3a1f23;--ghosthover:#222c38;--code-bg:#070d14;--code-fg:#a9cdf2}
 *{box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;
-  max-width:1080px;margin:0 auto;padding:24px 18px;color:#1d2733;background:#fafbfc}
-h1{margin:0 0 2px}.sub{color:#667;margin:0 0 18px;font-size:14px}
-fieldset{border:1px solid #dde2e8;border-radius:10px;margin:0 0 16px;padding:14px 16px;background:#fff}
-legend{padding:0 8px;font-weight:650;color:var(--blue)}
-.opt{font-weight:400;color:#889;font-size:12px}
-.firsttime{background:#eaf4ff;border:1px solid #bcdcff;border-radius:9px;padding:11px 14px;margin-bottom:16px;font-size:13.5px;line-height:1.5}
-details.adv{border:1px solid #e3e8ee;border-radius:9px;background:#fff;padding:6px 14px;margin:0 0 16px}
-details.adv>summary{cursor:pointer;font-weight:600;color:var(--blue);font-size:13.5px;padding:6px 0}
-.legend{display:none;margin-top:10px;font-size:12.5px;color:#566;background:#fff;border:1px solid #e3e8ee;border-radius:9px;padding:10px 13px;line-height:1.6}
-label.fld{display:block;font-size:13px;font-weight:600;margin:10px 0 4px;color:#445}
+  max-width:1080px;margin:0 auto;padding:24px 18px;color:var(--fg);background:var(--bg)}
+h1{margin:0 0 2px}.sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+fieldset{border:1px solid var(--border);border-radius:10px;margin:0 0 16px;padding:14px 16px;background:var(--panel)}
+legend{padding:0 8px;font-weight:650;color:var(--accent)}
+.opt{font-weight:400;color:var(--muted2);font-size:12px}
+.firsttime{background:#eaf4ff;border:1px solid #bcdcff;border-radius:9px;padding:11px 14px;margin-bottom:16px;font-size:13.5px;line-height:1.5;color:#1d2733}
+html[data-theme=dark] .firsttime{background:#16314a;border-color:#27496b;color:#cfe2f5}
+details.adv{border:1px solid var(--border2);border-radius:9px;background:var(--panel);padding:6px 14px;margin:0 0 16px}
+details.adv>summary{cursor:pointer;font-weight:600;color:var(--accent);font-size:13.5px;padding:6px 0}
+.legend{display:none;margin-top:10px;font-size:12.5px;color:var(--muted);background:var(--panel);border:1px solid var(--border2);border-radius:9px;padding:10px 13px;line-height:1.6}
+label.fld{display:block;font-size:13px;font-weight:600;margin:10px 0 4px;color:var(--muted)}
 input[type=text],input[type=number],select,textarea{
-  width:100%;padding:9px 10px;font-size:14px;border:1px solid #c4ccd6;border-radius:7px;font-family:inherit}
+  width:100%;padding:9px 10px;font-size:14px;border:1px solid var(--field-border);border-radius:7px;font-family:inherit;background:var(--panel);color:var(--fg)}
 textarea{resize:vertical;min-height:74px}
 .row{display:flex;gap:14px;flex-wrap:wrap}.row>div{flex:1;min-width:220px}
-.hint{color:#8a93a0;font-size:12px;margin-top:4px}
+.hint{color:var(--muted2);font-size:12px;margin-top:4px}
 .checks label{display:inline-flex;align-items:center;gap:5px;margin-right:16px;font-size:14px;cursor:pointer}
 button{background:var(--blue);color:#fff;border:none;padding:11px 22px;border-radius:8px;
-  font-size:15px;font-weight:600;cursor:pointer}button:hover{background:#163a5a}
-button:disabled{background:#a9b2bd;cursor:not-allowed}
-button.ghost{background:#fff;color:var(--blue);border:1.5px solid #c4ccd6}
-button.ghost:hover{background:#eef2f7}
+  font-size:15px;font-weight:600;cursor:pointer}button:hover{filter:brightness(.9)}
+button:disabled{background:#a9b2bd;cursor:not-allowed;filter:none}
+button.ghost{background:var(--panel);color:var(--accent);border:1.5px solid var(--field-border)}
+button.ghost:hover{background:var(--ghosthover);filter:none}
 .btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px}
 input[type=file]{font-size:13px}
 #checkout{margin-top:12px}
@@ -233,30 +241,54 @@ input[type=file]{font-size:13px}
 .probe .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .dot.ok{background:#28a745}.dot.bad{background:#d6453f}
 .banner{border-radius:9px;padding:11px 14px;margin-top:10px;font-size:13.5px}
-.banner.good{background:#e8f8ec;border:1px solid #b6e3c2}
-.banner.warn{background:#fff4e0;border:1px solid #f0d49a}
-.banner.bad{background:#fdecee;border:1px solid #f0bcc0}
-.vdesc{font-size:12.5px;color:#566;margin-top:6px;line-height:1.45}
-#status{display:none;margin-top:8px;background:#0d1b2a;color:#c8e1ff;border-radius:9px;
+.banner.good{background:#e8f8ec;border:1px solid #b6e3c2;color:#1d2733}
+.banner.warn{background:#fff4e0;border:1px solid #f0d49a;color:#1d2733}
+.banner.bad{background:#fdecee;border:1px solid #f0bcc0;color:#1d2733}
+.vdesc{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.45}
+#status{display:none;margin-top:8px;background:var(--code-bg);color:var(--code-fg);border-radius:9px;
   padding:12px 14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
   max-height:260px;overflow:auto;white-space:pre-wrap;line-height:1.5}
 #summary{display:none;margin-top:14px;gap:10px}
-.stat{flex:1;text-align:center;background:#fff;border:1px solid #dde2e8;border-radius:9px;padding:10px}
+.stat{flex:1;text-align:center;background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:10px}
 .stat b{display:block;font-size:24px}.stat.A b{color:var(--green)}.stat.B b{color:#c79100}.stat.C b{color:#b04a52}
 #dls{display:none;margin-top:12px;gap:10px}
 a.dl{display:inline-block;padding:10px 16px;background:var(--green);color:#fff;text-decoration:none;border-radius:8px;font-weight:600}
 a.dl.alt{background:#34507a}
-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12.5px;display:none;background:#fff}
-th,td{border:1px solid #e3e8ee;padding:5px 7px;text-align:left;vertical-align:top}
-th{background:#eef2f7;position:sticky;top:0}
-.tierA{background:#e8f8ec}.tierB{background:#fff8e1}.tierC{background:#fdecee}
-.tablewrap{max-height:440px;overflow:auto;border-radius:9px;border:1px solid #e3e8ee;margin-top:14px;display:none}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12.5px;display:none;background:var(--panel)}
+th,td{border:1px solid var(--border2);padding:5px 7px;text-align:left;vertical-align:top}
+th{background:var(--th);position:sticky;top:0;cursor:pointer;user-select:none;white-space:nowrap}
+th .arrow{color:var(--muted2);font-size:10px;margin-left:3px}
+.tierA{background:var(--tierA)}.tierB{background:var(--tierB)}.tierC{background:var(--tierC)}
+tr.tagged-contacted td{box-shadow:inset 4px 0 0 0 var(--green)}
+tr.tagged-not_interested td{box-shadow:inset 4px 0 0 0 #b04a52;opacity:.6}
+.tablewrap{max-height:440px;overflow:auto;border-radius:9px;border:1px solid var(--border2);margin-top:14px;display:none}
 .recent{display:flex;flex-wrap:wrap;gap:8px}
-.rcard{border:1px solid #dde2e8;border-radius:8px;padding:8px 11px;background:#fff;font-size:12.5px;min-width:210px}
-.rcard b{color:var(--blue)}.rcard a{color:var(--green);text-decoration:none;font-weight:600}
-.rcard .meta{color:#889;font-size:11.5px;margin:2px 0 5px}
+.rcard{border:1px solid var(--border);border-radius:8px;padding:8px 11px;background:var(--panel);font-size:12.5px;min-width:210px}
+.rcard b{color:var(--accent)}.rcard a{color:var(--green);text-decoration:none;font-weight:600}
+.rcard .meta{color:var(--muted2);font-size:11.5px;margin:2px 0 5px}
 #resultsearch{display:none;margin-top:14px}
+#themetoggle{position:fixed;top:14px;right:14px;background:var(--panel);color:var(--accent);
+  border:1.5px solid var(--field-border);padding:7px 12px;border-radius:8px;font-size:13px;z-index:50}
+#themetoggle:hover{background:var(--ghosthover);filter:none}
+.resulttools{display:none;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.resulttools button{padding:7px 13px;font-size:13px}
+.cellbtn{background:none;border:1px solid var(--field-border);color:var(--accent);
+  padding:1px 5px;font-size:11px;border-radius:5px;cursor:pointer;font-weight:600;margin-left:4px;vertical-align:middle}
+.cellbtn:hover{background:var(--ghosthover);filter:none}
+td a{color:var(--accent);text-decoration:none}td a:hover{text-decoration:underline}
+.tagbtns{display:inline-flex;gap:3px}
+.tagbtns button{background:none;border:1px solid var(--field-border);color:var(--muted);
+  padding:1px 5px;font-size:11px;border-radius:5px;cursor:pointer}
+.tagbtns button.on-c{background:var(--green);color:#fff;border-color:var(--green)}
+.tagbtns button.on-n{background:#b04a52;color:#fff;border-color:#b04a52}
+#colmenu{position:relative;display:inline-block}
+#colpanel{display:none;position:absolute;top:100%;left:0;z-index:40;background:var(--panel);
+  border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:4px;
+  box-shadow:0 4px 14px rgba(0,0,0,.15);min-width:200px;max-height:300px;overflow:auto}
+#colpanel label{display:block;font-size:13px;padding:3px 0;cursor:pointer;white-space:nowrap;font-weight:400;color:var(--fg)}
+#colpanel input{margin-right:6px}
 </style></head><body>
+<button id="themetoggle" type="button" title="Toggle dark mode">🌙 Dark</button>
 <h1>Lead Engine</h1>
 <p class="sub">Find scored local-business leads from free public data — no accounts, no API keys.</p>
 
@@ -356,9 +388,33 @@ th{background:#eef2f7;position:sticky;top:0}
 <div id="resultsearch">
   <input type="text" id="r_filter" placeholder="Filter these results… (name, city, why a lead, pitch)">
 </div>
+<div class="resulttools" id="resulttools">
+  <span id="colmenu">
+    <button type="button" class="ghost" id="colbtn">☰ Columns</button>
+    <div id="colpanel"></div>
+  </span>
+  <button type="button" class="ghost" id="exportbtn">⬇ Export filtered view (.csv)</button>
+  <span class="hint" id="exportcount"></span>
+</div>
 <div class="tablewrap" id="tablewrap"><table id="preview"></table></div>
 
 <script>
+// ── Dark mode: respect prefers-color-scheme on first load, persist choice. ──
+(function(){
+  const tog=document.getElementById("themetoggle");
+  function apply(t){
+    document.documentElement.setAttribute("data-theme", t);
+    tog.textContent = t==="dark" ? "☀️ Light" : "🌙 Dark";
+  }
+  let saved=null; try{ saved=localStorage.getItem("leadgen_theme"); }catch(e){}
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  apply(saved || (prefersDark ? "dark" : "light"));
+  tog.addEventListener("click", ()=>{
+    const next = document.documentElement.getAttribute("data-theme")==="dark" ? "light" : "dark";
+    apply(next); try{ localStorage.setItem("leadgen_theme", next); }catch(e){}
+  });
+})();
+
 const VERTS = {{ verticals|tojson }};
 const vsel = document.getElementById("vertical");
 VERTS.forEach(v => { const o=document.createElement("option"); o.value=v.key; o.textContent=v.label; vsel.appendChild(o); });
@@ -484,24 +540,152 @@ function poll(jid){
 }
 
 let curLeads=[], curCols=[];
+let visibleCols={};        // key -> bool (shown in preview)
+let sortKey=null, sortDir=1; // 1 asc, -1 desc
+const PHONE_KEYS=new Set(["phone","telephone","tel"]);
+const EMAIL_KEYS=new Set(["email","e-mail","mail"]);
+
+// ── Per-lead tagging (contacted / not-interested), persisted in localStorage. ──
+function loadTags(){ try{ return JSON.parse(localStorage.getItem("leadgen_tags")||"{}"); }catch(e){ return {}; } }
+function saveTags(t){ try{ localStorage.setItem("leadgen_tags", JSON.stringify(t)); }catch(e){} }
+let tags=loadTags();
+function leadKey(r){ return (String(r.name||"").trim()+"|"+String(r.phone||"").trim()).toLowerCase(); }
+
 function renderTable(leads, columns){
   curLeads=leads||[]; curCols=columns||[];
+  // Default visible columns: first 9 (matches prior "keep readable" behaviour), unless prefs saved.
+  let savedVis=null; try{ savedVis=JSON.parse(localStorage.getItem("leadgen_cols")||"null"); }catch(e){}
+  visibleCols={};
+  curCols.forEach((c,i)=>{ const k=c[1];
+    visibleCols[k] = savedVis && (k in savedVis) ? !!savedVis[k] : i<9; });
+  sortKey=null; sortDir=1;
   document.getElementById("resultsearch").style.display="block";
+  document.getElementById("resulttools").style.display="flex";
+  buildColPanel();
   drawRows();
 }
-function drawRows(){
+
+function buildColPanel(){
+  const p=document.getElementById("colpanel");
+  p.innerHTML=curCols.map(c=>
+    `<label><input type="checkbox" data-k="${esc(c[1])}" ${visibleCols[c[1]]?"checked":""}>${esc(c[0])}</label>`
+  ).join("");
+  p.querySelectorAll("input").forEach(cb=>cb.addEventListener("change", ()=>{
+    visibleCols[cb.dataset.k]=cb.checked;
+    try{ localStorage.setItem("leadgen_cols", JSON.stringify(visibleCols)); }catch(e){}
+    drawRows();
+  }));
+}
+
+function shownCols(){ return curCols.filter(c=>visibleCols[c[1]]); }
+
+function filteredRows(){
   const q=(document.getElementById("r_filter").value||"").toLowerCase().trim();
-  const cols=curCols.slice(0, 9); // keep the preview readable
+  const cols=shownCols();
   const match=r=>cols.some(c=>String(r[c[1]]==null?"":r[c[1]]).toLowerCase().includes(q));
-  const rows=(q?curLeads.filter(match):curLeads).slice(0,500);
-  let h="<thead><tr>"+cols.map(c=>`<th>${esc(c[0])}</th>`).join("")+"</tr></thead><tbody>";
+  let rows=q?curLeads.filter(match):curLeads.slice();
+  if(sortKey!=null){
+    rows.sort((a,b)=>{
+      let x=a[sortKey], y=b[sortKey];
+      const nx=parseFloat(x), ny=parseFloat(y);
+      let c;
+      if(!isNaN(nx)&&!isNaN(ny)&&String(x).trim()!==""&&String(y).trim()!=="") c=nx-ny;
+      else c=String(x==null?"":x).toLowerCase().localeCompare(String(y==null?"":y).toLowerCase());
+      return c*sortDir;
+    });
+  }
+  return rows;
+}
+
+function cellHTML(r, key){
+  const raw=r[key]; const v=String(raw==null?"":raw);
+  if(!v) return "";
+  if(PHONE_KEYS.has(key)){
+    const tel=v.replace(/[^0-9+]/g,"");
+    return `<a href="tel:${esc(tel)}">${esc(v)}</a>`
+      +`<button type="button" class="cellbtn" data-copy="${esc(v)}">copy</button>`;
+  }
+  if(EMAIL_KEYS.has(key)){
+    return `<a href="mailto:${esc(v)}">${esc(v)}</a>`
+      +`<button type="button" class="cellbtn" data-copy="${esc(v)}">copy</button>`;
+  }
+  return esc(v);
+}
+
+function drawRows(){
+  const cols=shownCols();
+  const all=filteredRows();
+  const rows=all.slice(0,500);
+  document.getElementById("exportcount").textContent=
+    all.length+" row(s) match"+(curLeads.length!==all.length?" of "+curLeads.length:"");
+  const arrow=k=> sortKey===k ? `<span class="arrow">${sortDir>0?"▲":"▼"}</span>` : `<span class="arrow">↕</span>`;
+  let h="<thead><tr>"+cols.map(c=>`<th data-k="${esc(c[1])}">${esc(c[0])}${arrow(c[1])}</th>`).join("")
+    +`<th>Status</th></tr></thead><tbody>`;
   for(const r of rows){
     const tier=r.tier||"C";
-    h+=`<tr class="tier${esc(tier)}">`+cols.map(c=>`<td>${esc(r[c[1]])}</td>`).join("")+"</tr>";
+    const tg=tags[leadKey(r)]||"";
+    const tagClass=tg?` tagged-${esc(tg)}`:"";
+    h+=`<tr class="tier${esc(tier)}${tagClass}">`
+      +cols.map(c=>`<td>${cellHTML(r,c[1])}</td>`).join("")
+      +`<td><span class="tagbtns" data-key="${esc(leadKey(r))}">`
+      +`<button type="button" data-tag="contacted" class="${tg==='contacted'?'on-c':''}" title="Mark contacted">✓</button>`
+      +`<button type="button" data-tag="not_interested" class="${tg==='not_interested'?'on-n':''}" title="Not interested">✕</button>`
+      +`</span></td></tr>`;
   }
   table.innerHTML=h+"</tbody>"; table.style.display="table"; tablewrap.style.display="block";
+  // header sort handlers
+  table.querySelectorAll("th[data-k]").forEach(th=>th.addEventListener("click", ()=>{
+    const k=th.dataset.k;
+    if(sortKey===k) sortDir=-sortDir; else { sortKey=k; sortDir=1; }
+    drawRows();
+  }));
+  // copy buttons
+  table.querySelectorAll("button[data-copy]").forEach(b=>b.addEventListener("click", ev=>{
+    ev.stopPropagation();
+    const txt=b.dataset.copy;
+    const done=()=>{ const o=b.textContent; b.textContent="✓"; setTimeout(()=>b.textContent=o,900); };
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done,done);
+    else { const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta);
+           ta.select(); try{document.execCommand("copy");}catch(e){} ta.remove(); done(); }
+  }));
+  // tag buttons (mark contacted / not-interested; click again to clear)
+  table.querySelectorAll(".tagbtns button").forEach(b=>b.addEventListener("click", ()=>{
+    const key=b.parentNode.dataset.key, val=b.dataset.tag;
+    if(tags[key]===val) delete tags[key]; else tags[key]=val;
+    saveTags(tags); drawRows();
+  }));
 }
 document.getElementById("r_filter").addEventListener("input", drawRows);
+
+// Column chooser open/close
+document.getElementById("colbtn").addEventListener("click", e=>{
+  e.stopPropagation();
+  const p=document.getElementById("colpanel");
+  p.style.display = p.style.display==="block" ? "none" : "block";
+});
+document.addEventListener("click", e=>{
+  const p=document.getElementById("colpanel");
+  if(p && !document.getElementById("colmenu").contains(e.target)) p.style.display="none";
+});
+
+// ── Export exactly the filtered + sorted rows, with visible columns, as CSV. ──
+function csvCell(v){ v=String(v==null?"":v);
+  return /[",\\n\\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+document.getElementById("exportbtn").addEventListener("click", ()=>{
+  const cols=shownCols();
+  const rows=filteredRows();
+  const header=cols.map(c=>csvCell(c[0])).concat(["status"]);
+  const lines=[header.join(",")];
+  for(const r of rows){
+    const row=cols.map(c=>csvCell(r[c[1]])).concat([csvCell(tags[leadKey(r)]||"")]);
+    lines.push(row.join(","));
+  }
+  const blob=new Blob(["\\ufeff"+lines.join("\\r\\n")],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download="leads_filtered.csv"; document.body.appendChild(a); a.click();
+  a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 
 // Recent runs (this session) — re-download without re-running.
 async function loadRecent(){

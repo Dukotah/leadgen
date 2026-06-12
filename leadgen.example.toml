@@ -1,0 +1,51 @@
+# leadgen.toml — example configuration for the universal lead engine.
+#
+# Drop this file (renamed to `leadgen.toml`) in your working directory, or in
+# ~/.config/leadgen/leadgen.toml, and the engine will read settings from it so
+# you don't have to retype long flag lists. Anything you pass on the command
+# line overrides the matching value here. Every key is optional.
+
+# --- which vertical and market to run -------------------------------------
+# Vertical key (run `leadgen --list` to see them all): web_design, seo_audit,
+# no_ssl, healthcare_web, restaurants, home_services, social_only, ...
+default_vertical = "web_design"
+
+# Named market key (e.g. "austin_tx") OR any geocodable place name.
+default_market = "austin_tx"
+
+# --- data sources ----------------------------------------------------------
+# Any combination of: overture, osm, socrata, npi, foursquare, arcgis
+#   overture / osm  -> map providers (broad business coverage)
+#   socrata / arcgis-> open-data licenses & permits (per-city datasets)
+#   npi             -> healthcare provider registry
+#   foursquare      -> deep but slow, no API key required
+sources = ["overture", "osm"]
+
+# --- collection / enrichment knobs ----------------------------------------
+limit = 200          # cap on businesses collected (omit for no cap)
+enrich = true        # visit each business's site to gather signals
+enrich_cap = 150     # only enrich the top-N collected (cost control)
+
+# Output filename stem: writes <stem>_crm.csv and <stem>.xlsx
+out = "austin_web"
+
+# --- per-vertical config overrides ----------------------------------------
+# Shallow-merged over the chosen vertical's built-in config for this run only.
+[config]
+# Socrata open-data resource URLs (used when "socrata" is in sources):
+socrata_datasets = [
+  "https://data.austintexas.gov/resource/abcd-1234.json",
+]
+# ArcGIS FeatureServer layer URLs (used when "arcgis" is in sources):
+arcgis_layers = [
+  "https://services.arcgis.com/EXAMPLE/arcgis/rest/services/Businesses/FeatureServer/0",
+]
+# NPI taxonomy descriptions to match (used when "npi" is in sources):
+npi_taxonomies = ["Dentist", "Family Medicine"]
+
+# Scoring weights handed to the vertical's score function. Keys depend on the
+# vertical; these are illustrative. CLI cannot set these — config file only.
+[config.weights]
+no_ssl = 25
+old_site = 15
+no_mobile = 10

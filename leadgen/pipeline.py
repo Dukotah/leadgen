@@ -141,6 +141,30 @@ def run_pipeline(vertical: Vertical, market: str, *,
                                         layers=cfg.get("arcgis_layers"))
             except Exception as e:
                 log(f"  ArcGIS failed: {e}")
+        # Extra no-key sources (lazy import so they're fully optional).
+        if {"wikidata", "ckan", "localfile", "url_csv"} & set(sources):
+            from .extra_sources import (wikidata_collect, ckan_collect,
+                                        localfile_collect, url_csv_collect)
+            if "wikidata" in sources:
+                try:
+                    leads += wikidata_collect(bbox, limit=limit, log=log)
+                except Exception as e:
+                    log(f"  Wikidata failed: {e}")
+            if "ckan" in sources:
+                try:
+                    leads += ckan_collect(label, limit=limit, log=log)
+                except Exception as e:
+                    log(f"  CKAN failed: {e}")
+            if "localfile" in sources and cfg.get("localfile_path"):
+                try:
+                    leads += localfile_collect(cfg["localfile_path"], limit=limit, log=log)
+                except Exception as e:
+                    log(f"  Local file failed: {e}")
+            if "url_csv" in sources and cfg.get("url_csv"):
+                try:
+                    leads += url_csv_collect(cfg["url_csv"], limit=limit, log=log)
+                except Exception as e:
+                    log(f"  URL CSV failed: {e}")
     # Normalize phones (helps dialing + cross-source dedupe identity).
     from .quality import cross_source_dedupe, normalize_phone
     for r in leads:

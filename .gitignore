@@ -24,8 +24,13 @@ gui/_output/*
 *.csv
 *.xlsx
 *.jsonl
+*.json
 *.parquet
 *.sqlite
+*.vcf
+*.leads.md
+leadgen.toml          # a user's real config may name private datasets; keep the example only
+!leadgen.example.toml
 
 # IDE / OS
 .vscode/

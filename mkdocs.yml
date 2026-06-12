@@ -1,0 +1,27 @@
+# mkdocs.yml — documentation site config for leadgen.
+#
+# This is a DEV-ONLY convenience for browsing the docs locally; it is NOT a
+# project dependency (leadgen itself needs no docs tooling to run). To build:
+#
+#     pip install mkdocs-material
+#     mkdocs serve        # then open http://127.0.0.1:8000
+#
+# `mkdocs build` writes a static site to ./site/ (git-ignore it if you build).
+
+site_name: leadgen
+site_description: A universal, key-free local-business lead engine.
+
+theme:
+  name: material
+
+# `docs_dir` points at the existing docs/ folder. The repo README is not inside
+# docs/, so the site home page is docs/index.md, which links back out to it.
+docs_dir: docs
+
+nav:
+  - Home: index.md
+  - Cookbook: COOKBOOK.md
+  - Add a vertical: ADD_A_VERTICAL.md
+  - Responsible use: RESPONSIBLE_USE.md
+  - Roadmap: ROADMAP.md
+  - Screenshots: SCREENSHOTS.md
