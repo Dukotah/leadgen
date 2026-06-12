@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "leadgen"
+version = "1.0.0"
+description = "A universal, key-free local-business lead-generation engine: collect → enrich → score → suppress → export, driven by swappable verticals."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "leadgen contributors" }]
+keywords = ["lead-generation", "prospecting", "osm", "overture", "crm", "scraping"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+]
+
+# Core engine dependencies. duckdb is only strictly needed for the Overture /
+# Foursquare bulk sources, but it's small and keeping it in core avoids a
+# confusing ImportError on the most common --sources path.
+dependencies = [
+    "requests>=2.31",
+    "openpyxl>=3.1",
+    "duckdb>=0.9",
+]
+
+[project.optional-dependencies]
+# Web/desktop GUI (Flask server + optional native window). Install with:
+#   pip install "leadgen[gui]"
+gui = [
+    "flask>=3.0",
+    "pywebview>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/leadgen/leadgen"
+Repository = "https://github.com/leadgen/leadgen"
+
+[project.scripts]
+leadgen = "leadgen.__main__:main"
+
+[tool.setuptools]
+# Standard flat layout: the leadgen/ directory IS the package. No src-layout.
+packages = ["leadgen", "leadgen.verticals", "leadgen.tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# A sensible default lint set: pyflakes (F), pycodestyle errors+warnings (E, W),
+# isort (I), bugbear (B), comprehensions (C4), pyupgrade (UP).
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = [
+    "E501",  # line length handled by the formatter / line-length setting
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use asserts and slightly looser style.
+"leadgen/tests/*" = ["B011"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]

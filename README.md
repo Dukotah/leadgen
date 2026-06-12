@@ -6,9 +6,10 @@ HOW to score it; the engine handles everything else. Point it at any geocodable
 market on Earth, pull businesses from free no-key data sources, audit their
 websites, and get a CRM-ready CSV + a color-tiered spreadsheet.
 
-It ships with one worked vertical — **`web_design`** (find local businesses with
-no website, a social-only page, or a weak/slow DIY site) — and a clean extension
-point so you can add your own in a single file.
+It ships with **eight ready-made verticals** — `web_design`, `seo_audit`,
+`social_only`, `restaurants`, `home_services`, `no_ssl`, `healthcare_web`, and
+`directory_only` — and a clean extension point so you can add your own in a single
+file (`python -m leadgen --list` shows them all).
 
 ```text
         ┌── Overture (bulk, national)            ┌── score_fn  → A / B / C + reasons
@@ -181,6 +182,18 @@ into the design and worth stating plainly:
   trigger data-broker registration (e.g. California's DELETE Act) and anti-spam
   rules (CAN-SPAM, CASL, GDPR). Generating a call list for your own business is a
   very different thing from selling one — know which you're doing.
+
+Full guidance, per-source licenses, and attribution notes: [`docs/RESPONSIBLE_USE.md`](docs/RESPONSIBLE_USE.md).
+
+---
+
+## More docs
+
+- [`docs/COOKBOOK.md`](docs/COOKBOOK.md) — worked recipes, one per use case
+- [`docs/ADD_A_VERTICAL.md`](docs/ADD_A_VERTICAL.md) — build your own vertical
+- [`docs/RESPONSIBLE_USE.md`](docs/RESPONSIBLE_USE.md) — licenses, attribution, anti-spam
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — 100 planned improvements
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`CHANGELOG.md`](CHANGELOG.md)
 
 ---
 

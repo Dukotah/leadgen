@@ -141,8 +141,13 @@ def run_pipeline(vertical: Vertical, market: str, *,
                                         layers=cfg.get("arcgis_layers"))
             except Exception as e:
                 log(f"  ArcGIS failed: {e}")
-    log(f"Collected {len(leads)} raw; deduping…")
-    leads = _dedupe(leads)
+    # Normalize phones (helps dialing + cross-source dedupe identity).
+    from .quality import cross_source_dedupe, normalize_phone
+    for r in leads:
+        if r.get("phone"):
+            r["phone"] = normalize_phone(r["phone"]) or r["phone"]
+    log(f"Collected {len(leads)} raw; deduping across sources…")
+    leads = cross_source_dedupe(leads)
     log(f"  {len(leads)} after dedupe")
 
     # 1a. drop businesses already in the user's CRM (never hand back a dupe)

@@ -1,0 +1,30 @@
+# Keep the build context small and free of secrets / generated data.
+.git
+.gitignore
+
+# Virtualenvs
+.venv
+venv
+env
+
+# Python caches / build artifacts
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.mypy_cache
+*.egg-info
+dist
+build
+
+# Generated lead data and GUI output — never bundle scraped data
+gui/_output
+*.csv
+*.xlsx
+
+# Local tooling / editors
+.vscode
+.idea
+*.log
