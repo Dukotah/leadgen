@@ -28,8 +28,9 @@ def main(argv=None) -> int:
     ap.add_argument("--vertical", help="vertical key (see --list)")
     ap.add_argument("--market", help="named market key or a geocodable place name")
     ap.add_argument("--sources", nargs="+", default=["overture"],
-                    choices=["overture", "osm", "socrata"],
-                    help="data sources to collect from (socrata = open-data business licenses)")
+                    choices=["overture", "osm", "socrata", "npi", "foursquare", "arcgis"],
+                    help="data sources: overture/osm (maps), socrata/arcgis (open-data "
+                         "licenses), npi (healthcare), foursquare (deep/slow, no key)")
     ap.add_argument("--limit", type=int, help="cap businesses collected")
     ap.add_argument("--enrich-cap", type=int, default=150,
                     help="enrich only the top-N businesses (cost control)")

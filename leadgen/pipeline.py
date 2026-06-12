@@ -9,7 +9,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .geo import resolve_market
-from .sources import overture_collect, osm_collect, socrata_collect
+from .sources import (overture_collect, osm_collect, socrata_collect,
+                      npi_collect, foursquare_collect, arcgis_collect)
 from .suppression import norm, build_suppression_set
 from .export import write_outputs
 from .vertical import Vertical
@@ -122,6 +123,24 @@ def run_pipeline(vertical: Vertical, market: str, *,
                                          datasets=cfg.get("socrata_datasets"))
             except Exception as e:
                 log(f"  Socrata failed: {e}")
+        if "npi" in sources:
+            try:
+                leads += npi_collect(label, limit=limit, log=log,
+                                     taxonomies=cfg.get("npi_taxonomies"))
+            except Exception as e:
+                log(f"  NPI failed: {e}")
+        if "foursquare" in sources:
+            try:
+                leads += foursquare_collect(bbox, vertical.overture_categories,
+                                            limit, log)
+            except Exception as e:
+                log(f"  Foursquare failed: {e}")
+        if "arcgis" in sources:
+            try:
+                leads += arcgis_collect(label, limit=limit, log=log,
+                                        layers=cfg.get("arcgis_layers"))
+            except Exception as e:
+                log(f"  ArcGIS failed: {e}")
     log(f"Collected {len(leads)} raw; deduping…")
     leads = _dedupe(leads)
     log(f"  {len(leads)} after dedupe")

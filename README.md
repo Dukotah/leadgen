@@ -87,27 +87,35 @@ needed) — see [`gui/BUILD_EXE.md`](gui/BUILD_EXE.md). See [`gui/README.md`](gu
 ## Data sources
 
 All free, **no API keys**. Each returns the same normalized record shape, so the
-rest of the pipeline is source-agnostic. Pick any combination:
+rest of the pipeline is source-agnostic. Pick any combination with `--sources`:
 
 | Source | What it is | Needs | License |
 |---|---|---|---|
-| **Overture** | Meta/Microsoft/Amazon's open Places dataset, queried by bbox over S3 | `duckdb` | CC-BY 4.0 |
-| **OpenStreetMap** | live businesses via the Overpass API — pulls every named shop/craft/office + key amenities in the area | nothing extra | ODbL |
-| **Socrata open data** | recently-licensed businesses from city/county open-data portals — surfaces new businesses that don't have a website yet | nothing extra | per-portal (mostly public domain) |
+| **overture** | Meta/Microsoft/Amazon's open Places dataset, by bbox over S3 | `duckdb` | CC-BY 4.0 |
+| **osm** | live businesses via Overpass — every named shop/craft/office + key amenities | nothing | ODbL |
+| **socrata** | recently-licensed businesses from city/county Socrata open-data portals | nothing | per-portal |
+| **npi** | every US healthcare provider (dentists/doctors/clinics/pharmacies) from CMS's registry | nothing | public domain |
+| **arcgis** | business-license layers published on ArcGIS (point it at a layer URL) | nothing | per-publisher |
+| **foursquare** | ~100M places w/ website+phone+socials via the open source.coop mirror | `duckdb` | Apache-2.0 |
 
 ```bash
-python -m leadgen --vertical web_design --market "Boulder, Colorado" --sources overture osm socrata
+python -m leadgen --vertical web_design --market "Boulder, Colorado" --sources overture osm socrata npi
 ```
 
 Notes:
-- **OpenStreetMap** is the broadest no-key live source — the engine queries all
-  shops, trades, offices, and the business-y amenities (restaurants, clinics,
-  hotels, …), not a short hardcoded list.
-- **Socrata** coverage is per-jurisdiction and patchy (great for some cities,
-  empty for others); it's best used *alongside* the map sources, not alone. A
-  vertical or run can point it at a specific dataset via `config["socrata_datasets"]`.
-- Foursquare's formerly-open Places bucket has been retired behind an account-gated
-  portal, so it's intentionally not wired in.
+- **osm** is the broadest no-key *live* source — all shops, trades, offices, and
+  business-y amenities (restaurants, clinics, hotels, …), not a hardcoded list.
+- **npi** has no website field by design, which makes its records prime
+  "needs-a-website" leads. Filter specialties with `config["npi_taxonomies"]`
+  (e.g. `["Dentist", "Chiropractor"]`).
+- **socrata** / **arcgis** are open *government* data: structured but per-
+  jurisdiction and patchy. Point them at specific datasets via
+  `config["socrata_datasets"]` / `config["arcgis_layers"]` (a `…/FeatureServer/0`
+  URL from hub.arcgis.com) for reliable results.
+- **foursquare** is the deepest coverage *and the slowest* — the open mirror can't
+  be pruned by area, so a query scans the whole dataset (~1–2 min). It's a frozen
+  2024-11-19 snapshot. Use it as an opt-in deep pass, not your default. (Foursquare's
+  own live S3 bucket is now account-gated; the source.coop mirror is the no-key path.)
 
 ---
 

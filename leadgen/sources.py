@@ -304,3 +304,227 @@ def socrata_collect(market_label: str, *, limit: int | None = None, log=print,
             break
     log(f"  Socrata: {len(out)} businesses")
     return out
+
+
+# ─────────────────── NPI registry / NPPES (no key) ───────────────────────────
+# CMS's national registry of every US healthcare provider — dentists, doctors,
+# clinics, pharmacies, chiropractors, PT, optometry, etc. Public API, no key.
+# It has no website field, which makes its records prime web_design leads.
+NPI_API = "https://npiregistry.cms.hhs.gov/api/"
+
+_US_STATES = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
+    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI",
+    "south carolina": "SC", "south dakota": "SD", "tennessee": "TN", "texas": "TX",
+    "utah": "UT", "vermont": "VT", "virginia": "VA", "washington": "WA",
+    "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY",
+    "district of columbia": "DC",
+}
+
+
+def _city_state(market_label: str) -> tuple[str, str]:
+    """Best-effort (city, 2-letter-state) from a market label. '' state if unknown."""
+    raw = (market_label or "").replace("_", " ").strip()
+    parts = [p.strip() for p in raw.split(",") if p.strip()] or [raw]
+    city = parts[0]
+    state = ""
+    # look for a US state (full name anywhere, or a trailing 2-letter token)
+    for p in parts:
+        if p.lower() in _US_STATES:
+            state = _US_STATES[p.lower()]
+            break
+    if not state:
+        toks = raw.split()
+        if len(toks) > 1 and len(toks[-1]) == 2 and toks[-1].isalpha():
+            state = toks[-1].upper()
+            if city.lower().endswith(" " + toks[-1].lower()):
+                city = city[: -(len(toks[-1]) + 1)].strip()
+    return city, state
+
+
+def _npi_map(res: dict) -> dict | None:
+    b = res.get("basic", {}) or {}
+    name = (b.get("organization_name")
+            or f"{b.get('first_name', '')} {b.get('last_name', '')}".strip())
+    if not name:
+        return None
+    addrs = res.get("addresses", []) or []
+    loc = next((a for a in addrs if a.get("address_purpose") == "LOCATION"),
+               addrs[0] if addrs else {})
+    taxes = res.get("taxonomies", []) or []
+    primary = next((t for t in taxes if t.get("primary")), taxes[0] if taxes else {})
+    line1 = (loc.get("address_1") or "").strip()
+    city = (loc.get("city") or "").title()
+    return {
+        "name": name,
+        "category": primary.get("desc", ""),
+        "website": None,                      # NPI carries no website — that's the point
+        "phone": loc.get("telephone_number"),
+        "email": None,
+        "address": ", ".join(p for p in [line1, city] if p),
+        "city": city,
+        "state": loc.get("state", ""),
+        "zip": (loc.get("postal_code") or "")[:5],
+        "brand": "",
+        "lat": None, "lon": None,
+        "source": "npi",
+        "source_url": f"https://npiregistry.cms.hhs.gov/provider-view/{res.get('number','')}",
+    }
+
+
+def npi_collect(market_label: str, *, limit: int | None = None, log=print,
+                taxonomies: list[str] | None = None) -> list[dict]:
+    """Healthcare providers in a city/state from the NPPES registry (no key).
+
+    taxonomies: optional specialty filters (e.g. ["Dentist", "Chiropractor"]);
+    None pulls all. Pulls organizations (NPI-2) first, then individuals (NPI-1).
+    """
+    city, state = _city_state(market_label)
+    if not (city and state):
+        log(f"  NPI: needs a US city + state (got '{market_label}'); skipping.")
+        return []
+    out: list[dict] = []
+    seen: set[str] = set()
+    for et in ("NPI-2", "NPI-1"):                # orgs (businesses) first
+        for tax in (taxonomies or [None]):
+            skip = 0
+            while skip <= 1000:
+                params = {"version": "2.1", "city": city, "state": state,
+                          "enumeration_type": et, "limit": 200, "skip": skip}
+                if tax:
+                    params["taxonomy_description"] = tax
+                try:
+                    r = requests.get(NPI_API, params=params,
+                                     headers={"User-Agent": UA}, timeout=20)
+                    results = r.json().get("results", []) if r.status_code == 200 else []
+                except Exception as e:
+                    log(f"  NPI request failed: {e}")
+                    results = []
+                for res in results:
+                    rec = _npi_map(res)
+                    if rec and rec["name"].lower() not in seen:
+                        seen.add(rec["name"].lower())
+                        out.append(rec)
+                if len(results) < 200 or (limit and len(out) >= limit):
+                    break
+                skip += 200
+                time.sleep(0.2)
+            if limit and len(out) >= limit:
+                break
+        if limit and len(out) >= limit:
+            break
+    log(f"  NPI: {len(out)} providers in {city}, {state}")
+    return out[:limit] if limit else out
+
+
+# ─────────────────── Foursquare OS Places (no key, slow) ─────────────────────
+# Foursquare's open Places dataset via the public source.coop mirror (frozen
+# 2024-11-19 snapshot, ~100M places WITH website/phone/social fields). No key,
+# but the mirror can't be pruned by area, so a query scans the whole dataset
+# (~1-2 min). Ship it as an opt-in "deep" source, off by default.
+FSQ_BASE = ("s3://us-west-2.opendata.source.coop/fused/fsq-os-places/"
+            "2024-11-19/places/*.parquet")
+
+
+def foursquare_collect(bbox, categories: list[str] | None = None,
+                       limit: int | None = None, log=print) -> list[dict]:
+    """Foursquare OS Places for a bbox via the open mirror. Slow (full scan)."""
+    try:
+        import duckdb
+    except ImportError:
+        raise RuntimeError("foursquare_collect needs duckdb: pip install duckdb")
+    south, west, north, east = bbox
+    con = duckdb.connect()
+    con.execute("INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2'; "
+                "SET s3_url_style='path';")
+    log("  Foursquare: scanning the open mirror — this is slow (~1-2 min), no key…")
+    cat_clause, params = "", []
+    if categories:
+        ors = " OR ".join("lower(array_to_string(fsq_category_labels,' ')) LIKE ?"
+                          for _ in categories)
+        cat_clause = f"AND ({ors})"
+        params = [f"%{c.lower()}%" for c in categories]
+    sql = f"""
+      SELECT name, fsq_category_labels, website, tel, email,
+             address, locality, region, postcode, latitude, longitude
+      FROM read_parquet('{FSQ_BASE}')
+      WHERE latitude BETWEEN {south} AND {north}
+        AND longitude BETWEEN {west} AND {east}
+        AND name IS NOT NULL {cat_clause}
+      {f'LIMIT {int(limit)}' if limit else ''}
+    """
+    rows = con.execute(sql, params).fetchall()
+    out = []
+    for (name, labels, website, tel, email, address, locality, region,
+         postcode, lat, lon) in rows:
+        out.append({
+            "name": (name or "").strip(),
+            "category": (labels[0] if labels else ""),
+            "website": website or None,
+            "phone": tel or None,
+            "email": email or None,
+            "address": ", ".join(p for p in [address, locality] if p),
+            "city": locality or "",
+            "state": region or "",
+            "zip": postcode or "",
+            "brand": "",
+            "lat": lat, "lon": lon,
+            "source": "foursquare",
+            "source_url": "",
+        })
+    log(f"  Foursquare: {len(out)} businesses")
+    return out
+
+
+# ─────────────────── ArcGIS feature services (no key) ────────────────────────
+# Thousands of governments publish business-license / -registration layers on
+# ArcGIS. Public layers are queryable with no key. Hub auto-discovery is flaky,
+# so this is config-driven: pass explicit layer query URLs.
+def arcgis_collect(market_label: str, *, limit: int | None = None, log=print,
+                   layers: list[str] | None = None) -> list[dict]:
+    """Query public ArcGIS feature-service layers (no key).
+
+    layers: list of layer URLs ending in .../FeatureServer/<n> (or MapServer/<n>).
+    Find one at hub.arcgis.com → a dataset's 'View API Resources' → the service URL.
+    Without layers this no-ops with guidance (Hub search is unreliable).
+    """
+    if not layers:
+        log("  ArcGIS: no layer URLs given (config['arcgis_layers']); skipping. "
+            "Pass a public .../FeatureServer/0 URL from hub.arcgis.com.")
+        return []
+    out: list[dict] = []
+    for layer in layers:
+        url = layer.rstrip("/") + "/query"
+        try:
+            r = requests.get(url, params={
+                "where": "1=1", "outFields": "*", "f": "json",
+                "resultRecordCount": min(2000, limit or 2000),
+            }, headers={"User-Agent": UA}, timeout=30)
+            feats = r.json().get("features", []) if r.status_code == 200 else []
+        except Exception as e:
+            log(f"  ArcGIS read failed ({layer}): {e}")
+            continue
+        got = 0
+        for f in feats:
+            rec = _socrata_map_row(f.get("attributes", {}) or {})
+            if rec:
+                rec["source"] = "arcgis"
+                rec["category"] = "business license"
+                rec["source_url"] = layer
+                out.append(rec)
+                got += 1
+            if limit and len(out) >= limit:
+                break
+        log(f"    {layer.split('/services/')[-1][:40] or layer[-40:]}: {got} records")
+        if limit and len(out) >= limit:
+            break
+    log(f"  ArcGIS: {len(out)} businesses")
+    return out

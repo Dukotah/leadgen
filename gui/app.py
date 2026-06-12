@@ -293,8 +293,10 @@ th{background:#eef2f7;position:sticky;top:0}
           <label><input type="checkbox" id="src_overture" checked> Nationwide business directory</label>
           <label><input type="checkbox" id="src_osm"> Live map data</label>
           <label><input type="checkbox" id="src_socrata"> New-business records (open data)</label>
+          <label><input type="checkbox" id="src_npi"> Healthcare providers (NPI)</label>
+          <label><input type="checkbox" id="src_foursquare"> Foursquare (deep · slow ~1–2 min)</label>
         </div>
-        <div class="hint">Leave these as-is unless a search comes back empty — then try ticking another box. “New-business records” finds just-licensed businesses (no website yet); coverage varies by city.</div>
+        <div class="hint">Leave these as-is unless a search comes back empty — then try ticking another box. “New-business records” = just-licensed businesses (coverage varies by city); “Healthcare providers” = dentists/doctors/clinics; “Foursquare” is a deep scan that takes 1–2 minutes.</div>
       </div>
     </div>
   </fieldset>
@@ -401,6 +403,8 @@ function baseBody(){
   const sources=[]; if(document.getElementById("src_overture").checked) sources.push("overture");
   if(document.getElementById("src_osm").checked) sources.push("osm");
   if(document.getElementById("src_socrata").checked) sources.push("socrata");
+  if(document.getElementById("src_npi").checked) sources.push("npi");
+  if(document.getElementById("src_foursquare").checked) sources.push("foursquare");
   return {
     vertical:vsel.value, market:document.getElementById("market").value,
     sources, enrich:document.getElementById("enrich").checked,

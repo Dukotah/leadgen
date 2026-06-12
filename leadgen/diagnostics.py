@@ -35,6 +35,14 @@ _PROBES = [
      lambda: requests.get("http://api.us.socrata.com/api/catalog/v1",
                           params={"q": "business license", "only": "dataset", "limit": 1},
                           headers={"User-Agent": UA}, timeout=12)),
+    ("npi", "Healthcare registry (NPI / NPPES)",
+     lambda: requests.get("https://npiregistry.cms.hhs.gov/api/",
+                          params={"version": "2.1", "city": "Austin", "state": "TX", "limit": 1},
+                          headers={"User-Agent": UA}, timeout=12)),
+    ("source_coop", "Foursquare mirror (deep, slow source)",
+     lambda: requests.get("https://data.source.coop/fused/fsq-os-places/"
+                          "2024-11-19/places/0.parquet",
+                          headers={"User-Agent": UA, "Range": "bytes=0-0"}, timeout=15)),
 ]
 
 # Which sources each pipeline source actually needs.
@@ -42,6 +50,9 @@ _SOURCE_NEEDS = {
     "overture": ["overture_s3"],   # + duckdb httpfs extension (checked separately)
     "osm": ["overpass"],
     "socrata": ["socrata"],
+    "npi": ["npi"],
+    "foursquare": ["source_coop"],  # + duckdb httpfs (checked separately)
+    "arcgis": [],                   # config-driven (explicit layer URLs); nothing to probe
 }
 
 
@@ -65,20 +76,25 @@ def check_connectivity() -> dict:
     can_overture = status.get("overture_s3", False) and duckdb_ok
     can_osm = status.get("overpass", False)
     can_socrata = status.get("socrata", False)
+    can_npi = status.get("npi", False)
+    can_foursquare = status.get("source_coop", False) and duckdb_ok
 
-    working = [n for n, ok in (("Overture", can_overture), ("OpenStreetMap", can_osm),
-                               ("Open data", can_socrata)) if ok]
-    if len(working) == 3:
+    flags = [("Overture", can_overture), ("OpenStreetMap", can_osm),
+             ("Open data", can_socrata), ("Healthcare (NPI)", can_npi),
+             ("Foursquare", can_foursquare)]
+    working = [n for n, ok in flags if ok]
+    if len(working) == len(flags):
         summary = "All systems go — every data source is reachable."
     elif working:
-        summary = (f"{', '.join(working)} reachable. Untick any source that shows red below "
-                   "before running.")
+        summary = (f"Reachable: {', '.join(working)}. Untick any source that shows red "
+                   "below before running.")
     else:
         summary = ("All data sources are blocked on this network. Try a normal home/office "
                    "connection (some corporate/VPN/cloud networks block these). You can still "
                    "use Demo mode to see how the tool works.")
     return {"results": results, "can_overture": can_overture, "can_osm": can_osm,
-            "can_socrata": can_socrata, "summary": summary}
+            "can_socrata": can_socrata, "can_npi": can_npi,
+            "can_foursquare": can_foursquare, "summary": summary}
 
 
 def _probe(fn) -> tuple[bool, str]:
@@ -86,7 +102,7 @@ def _probe(fn) -> tuple[bool, str]:
     try:
         r = fn()
         ms = int((time.time() - t) * 1000)
-        if r.status_code == 200:
+        if r.status_code in (200, 206):   # 206 = a Range probe succeeded
             return True, f"reachable ({ms} ms)"
         if r.status_code in (403, 401):
             return False, f"blocked by your network (HTTP {r.status_code})"
