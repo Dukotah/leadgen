@@ -1,29 +1,40 @@
-# leadgen — a universal local-business lead engine
+<p align="center">
+  <img src="docs/img/banner.svg" alt="leadgen — free, no-key local-business lead generation" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/Dukotah/leadgen/releases/latest"><img src="https://img.shields.io/github/v/release/Dukotah/leadgen?color=28a745&label=download%20app&style=flat-square" alt="Download"></a>
+  <a href="https://github.com/Dukotah/leadgen/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Dukotah/leadgen/ci.yml?branch=main&label=tests&style=flat-square" alt="Tests"></a>
+  <img src="https://img.shields.io/badge/API%20keys-none-28a745?style=flat-square" alt="No API keys">
+  <img src="https://img.shields.io/badge/python-3.10%2B-1f4e78?style=flat-square" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/license-MIT-1f4e78?style=flat-square" alt="MIT License">
+</p>
+
+<p align="center">
+  <b>Find scored local-business leads from free public data — no API keys, no accounts, runs on your machine.</b>
+</p>
 
 One pipeline — **collect → dedupe → enrich → suppress → score → export** — driven
 by swappable **verticals**. A *vertical* describes WHAT you're prospecting for and
 HOW to score it; the engine handles everything else. Point it at any geocodable
-market on Earth, pull businesses from free no-key data sources, audit their
+market on Earth, pull businesses from 10 free no-key data sources, audit their
 websites, and get a CRM-ready CSV + a color-tiered spreadsheet.
 
-It ships with **eight ready-made verticals** — `web_design`, `seo_audit`,
-`social_only`, `restaurants`, `home_services`, `no_ssl`, `healthcare_web`, and
-`directory_only` — and a clean extension point so you can add your own in a single
-file (`python -m leadgen --list` shows them all).
-
 ```text
-        ┌── Overture (bulk, national)            ┌── score_fn  → A / B / C + reasons
-data ───┤                              vertical ─┤── enrich_fn → audit each site
-        └── OpenStreetMap (live)                  └── opener_fn → a suggested pitch
-                    │                                      │
-        collect → dedupe → enrich → suppress → score → export → CSV + XLSX
+        ┌── Overture · OpenStreetMap · Foursquare        ┌── score_fn  → A / B / C + reasons
+data ───┤  Socrata · NPI · ArcGIS · Wikidata · your CSV  ├── enrich_fn → audit each site
+        └── (10 sources, zero API keys)        vertical ─┘── opener_fn → a suggested pitch
+                          │                                        │
+            collect → dedupe → enrich → suppress → score → export → CSV + XLSX
 ```
 
-No API keys. No accounts. Runs on your machine.
+**19 ready-made verticals** (web design, SEO, social-only, restaurants, home
+services, healthcare, and more — `python -m leadgen --list`), or add your own in a
+single file.
 
 ---
 
-## Just want to run it? (no coding)
+## ⬇️ Just want to run it? (no coding)
 
 Download the desktop app for your computer, double-click, done — no Python, no setup:
 
@@ -64,7 +75,19 @@ run_pipeline(get_vertical('web_design'), market='(demo)', demo=True)"
 ```
 
 Demo mode runs the full pipeline on five bundled sample businesses **offline** —
-no network — so you see real tiered output before your first live scrape.
+no network — so you see real tiered output before your first live scrape:
+
+```text
+ Tier  Score  Business               Why it's a lead
+ ────  ─────  ─────────────────────  ───────────────────────────────────────────
+  A      64   Summit Plumbing Co     NO WEBSITE; phone listed
+  A      54   Old Town Auto Repair   site unreachable; phone listed
+  B      48   Sunrise Cafe           no HTTPS; not mobile-friendly; DIY (Wix)
+  A      44   Bella Hair Studio      social-only (facebook.com); phone listed
+  C       4   Evergreen Dental       real site, no obvious issues
+```
+
+Each lead also gets a phone, website, address, and a suggested opener in the CSV/XLSX.
 
 ### Point-and-click GUI
 
