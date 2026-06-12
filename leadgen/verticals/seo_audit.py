@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from .. import register, Vertical
 from ..audit import is_weak_url, DIY_BUILDERS
-from ._common import audit_enrich
+from ._common import audit_enrich, BROAD_OSM_TAGS
 
 
 def _score(rec: dict) -> tuple[int, str, str]:
@@ -78,8 +78,7 @@ register(Vertical(
     description=("Finds businesses that already have a site but it's slow, "
                  "insecure, not mobile-friendly, or on a DIY builder — SEO/perf work."),
     overture_categories=[],
-    osm_tags=["craft=plumber", "craft=electrician", "shop=car_repair",
-              "shop=hairdresser", "amenity=restaurant", "office=lawyer"],
+    osm_tags=BROAD_OSM_TAGS,
     keep_chains=False,
     score_fn=_score,
     enrich_fn=audit_enrich,

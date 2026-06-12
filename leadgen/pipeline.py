@@ -9,7 +9,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .geo import resolve_market
-from .sources import overture_collect, osm_collect
+from .sources import overture_collect, osm_collect, socrata_collect
 from .suppression import norm, build_suppression_set
 from .export import write_outputs
 from .vertical import Vertical
@@ -116,6 +116,12 @@ def run_pipeline(vertical: Vertical, market: str, *,
                 leads += osm_collect(bbox, vertical.osm_tags, log)
             except Exception as e:
                 log(f"  OSM failed: {e}")
+        if "socrata" in sources:
+            try:
+                leads += socrata_collect(label, limit=limit, log=log,
+                                         datasets=cfg.get("socrata_datasets"))
+            except Exception as e:
+                log(f"  Socrata failed: {e}")
     log(f"Collected {len(leads)} raw; deduping…")
     leads = _dedupe(leads)
     log(f"  {len(leads)} after dedupe")

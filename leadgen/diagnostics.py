@@ -31,12 +31,17 @@ _PROBES = [
     ("duckduckgo", "Web search (find missing websites)",
      lambda: requests.post("https://html.duckduckgo.com/html/", data={"q": "real estate"},
                            headers={"User-Agent": "Mozilla/5.0"}, timeout=12)),
+    ("socrata", "Open data (business licenses)",
+     lambda: requests.get("http://api.us.socrata.com/api/catalog/v1",
+                          params={"q": "business license", "only": "dataset", "limit": 1},
+                          headers={"User-Agent": UA}, timeout=12)),
 ]
 
 # Which sources each pipeline source actually needs.
 _SOURCE_NEEDS = {
     "overture": ["overture_s3"],   # + duckdb httpfs extension (checked separately)
     "osm": ["overpass"],
+    "socrata": ["socrata"],
 }
 
 
@@ -59,19 +64,21 @@ def check_connectivity() -> dict:
 
     can_overture = status.get("overture_s3", False) and duckdb_ok
     can_osm = status.get("overpass", False)
+    can_socrata = status.get("socrata", False)
 
-    if can_overture and can_osm:
-        summary = "All systems go — both data sources are reachable."
-    elif can_overture:
-        summary = "Overture (bulk) works. OpenStreetMap is blocked — uncheck it and use Overture."
-    elif can_osm:
-        summary = "OpenStreetMap works. Overture is blocked — uncheck it and use OpenStreetMap."
+    working = [n for n, ok in (("Overture", can_overture), ("OpenStreetMap", can_osm),
+                               ("Open data", can_socrata)) if ok]
+    if len(working) == 3:
+        summary = "All systems go — every data source is reachable."
+    elif working:
+        summary = (f"{', '.join(working)} reachable. Untick any source that shows red below "
+                   "before running.")
     else:
-        summary = ("Both data sources are blocked on this network. Try a normal home/office "
+        summary = ("All data sources are blocked on this network. Try a normal home/office "
                    "connection (some corporate/VPN/cloud networks block these). You can still "
                    "use Demo mode to see how the tool works.")
     return {"results": results, "can_overture": can_overture, "can_osm": can_osm,
-            "summary": summary}
+            "can_socrata": can_socrata, "summary": summary}
 
 
 def _probe(fn) -> tuple[bool, str]:

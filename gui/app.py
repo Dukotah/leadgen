@@ -292,8 +292,9 @@ th{background:#eef2f7;position:sticky;top:0}
         <div class="checks" style="padding-top:8px">
           <label><input type="checkbox" id="src_overture" checked> Nationwide business directory</label>
           <label><input type="checkbox" id="src_osm"> Live map data</label>
+          <label><input type="checkbox" id="src_socrata"> New-business records (open data)</label>
         </div>
-        <div class="hint">Leave these as-is unless a search comes back empty — then try ticking the other box.</div>
+        <div class="hint">Leave these as-is unless a search comes back empty — then try ticking another box. “New-business records” finds just-licensed businesses (no website yet); coverage varies by city.</div>
       </div>
     </div>
   </fieldset>
@@ -399,6 +400,7 @@ document.getElementById("crm_file").addEventListener("change", e=>{
 function baseBody(){
   const sources=[]; if(document.getElementById("src_overture").checked) sources.push("overture");
   if(document.getElementById("src_osm").checked) sources.push("osm");
+  if(document.getElementById("src_socrata").checked) sources.push("socrata");
   return {
     vertical:vsel.value, market:document.getElementById("market").value,
     sources, enrich:document.getElementById("enrich").checked,

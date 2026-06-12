@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from .. import register, Vertical
 from ..audit import is_weak_url
-from ._common import is_social
+from ._common import is_social, BROAD_OSM_TAGS
 
 
 def _score(rec: dict) -> tuple[int, str, str]:
@@ -58,8 +58,7 @@ register(Vertical(
     description=("Finds local businesses whose only web presence is Facebook/"
                  "Instagram/Linktree — or nothing — so they need a site they own."),
     overture_categories=[],
-    osm_tags=["craft=plumber", "craft=electrician", "shop=car_repair",
-              "shop=hairdresser", "amenity=restaurant", "office=lawyer"],
+    osm_tags=BROAD_OSM_TAGS,
     keep_chains=False,
     score_fn=_score,
     opener_fn=_opener,

@@ -100,18 +100,29 @@ OVERPASS_ENDPOINTS = [
 RETRY_STATUS = {429, 502, 503, 504}
 
 
-def _overpass_query(bbox, tag_filters: list[str], timeout: int = 60) -> list[dict]:
+def _overpass_body(bbox, tag_filters: list[str], timeout: int = 60) -> str:
+    """Build the Overpass QL query body (no network). '' if no usable filters."""
     south, west, north, east = bbox
+    bb = f"({south},{west},{north},{east})"
     parts = []
     for tf in tag_filters:
-        if "=" not in tf:
-            continue
-        k, v = tf.split("=", 1)
-        parts.append(f'nwr["{k}"="{v}"]({south},{west},{north},{east});')
+        if "=" in tf:
+            k, v = tf.split("=", 1)
+            parts.append(f'nwr["{k}"="{v}"]{bb};')
+        else:
+            # Key-only filter (e.g. "shop", "craft", "office"): match ANY value of
+            # that key, but require a name so we get businesses, not unnamed nodes.
+            parts.append(f'nwr["{tf}"]["name"]{bb};')
     if not parts:
-        return []
-    body = (f"[out:json][timeout:{timeout}];\n(\n  " + "\n  ".join(parts)
+        return ""
+    return (f"[out:json][timeout:{timeout}];\n(\n  " + "\n  ".join(parts)
             + "\n);\nout center tags;")
+
+
+def _overpass_query(bbox, tag_filters: list[str], timeout: int = 60) -> list[dict]:
+    body = _overpass_body(bbox, tag_filters, timeout)
+    if not body:
+        return []
     errors = []
     for endpoint in OVERPASS_ENDPOINTS:
         for attempt in range(2):
@@ -142,9 +153,11 @@ def osm_collect(bbox, osm_tags: list[str], log=print) -> list[dict]:
         if not name:
             continue
         line1 = " ".join(tags.get(k, "") for k in ("addr:housenumber", "addr:street")).strip()
+        category = (tags.get("shop") or tags.get("craft") or tags.get("office")
+                    or tags.get("amenity") or tags.get("tourism") or "")
         out.append({
             "name": name.strip(),
-            "category": next((t for t in osm_tags if "=" in t), ""),
+            "category": category,
             "website": (tags.get("website") or tags.get("contact:website") or "").strip(),
             "phone": (tags.get("phone") or tags.get("contact:phone") or "").strip(),
             "email": (tags.get("email") or tags.get("contact:email") or "").strip(),
@@ -159,4 +172,135 @@ def osm_collect(bbox, osm_tags: list[str], log=print) -> list[dict]:
             "source_url": f"https://www.openstreetmap.org/{el['type']}/{el['id']}",
         })
     log(f"  OSM: {len(out)} named businesses")
+    return out
+
+
+# ─────────────────── Socrata open data (no key) ──────────────────────────────
+# Many US cities/counties publish business-license / -registration data on
+# Socrata portals. The Discovery API (no key) finds datasets; SODA reads them.
+# Coverage is per-jurisdiction and patchy, but it surfaces a kind of lead the maps
+# can't: brand-new, just-licensed businesses that don't have a website yet.
+SOCRATA_CATALOG = "http://api.us.socrata.com/api/catalog/v1"
+
+# Column-name aliases seen across portals → our normalized fields.
+_SOCRATA_FIELDS = {
+    "name": ("business_name", "dba_name", "dba", "doing_business_as", "company_name",
+             "licensee_name", "account_name", "name", "ownername", "owner_name",
+             "business"),
+    "address": ("address", "business_address", "street_address", "full_address",
+                "location_address", "premise_address", "site_address", "address_line_1",
+                "location", "geocoded_column"),
+    "city": ("city", "business_city", "physical_city", "mail_city"),
+    "state": ("state", "business_state", "physical_state"),
+    "zip": ("zip", "zip_code", "zipcode", "postal_code", "business_zip"),
+    "phone": ("phone", "phone_number", "business_phone", "telephone"),
+    "website": ("website", "url", "web", "web_address"),
+}
+
+
+def _first_field(row: dict, keys) -> str:
+    for k in keys:
+        v = row.get(k)
+        if isinstance(v, dict):  # SODA "location"/"human_address" columns
+            v = v.get("human_address") or v.get("address") or ""
+        if v:
+            return str(v).strip()
+    return ""
+
+
+def _socrata_map_row(row: dict) -> dict | None:
+    name = _first_field(row, _SOCRATA_FIELDS["name"])
+    if not name:
+        return None
+    city = _first_field(row, _SOCRATA_FIELDS["city"])
+    addr = _first_field(row, _SOCRATA_FIELDS["address"])
+    return {
+        "name": name,
+        "category": "business license",
+        "website": _first_field(row, _SOCRATA_FIELDS["website"]) or None,
+        "phone": _first_field(row, _SOCRATA_FIELDS["phone"]) or None,
+        "email": None,
+        "address": ", ".join(p for p in [addr, city] if p),
+        "city": city,
+        "state": _first_field(row, _SOCRATA_FIELDS["state"]),
+        "zip": _first_field(row, _SOCRATA_FIELDS["zip"]),
+        "brand": "",
+        "lat": None, "lon": None,
+        "source": "socrata",
+        "source_url": "",
+    }
+
+
+def _locality_terms(market_label: str) -> str:
+    """Best-effort 'city' string from a market label for catalog search.
+    'Austin, Texas' → 'Austin';  'austin_tx' → 'austin';  display names → first part."""
+    s = (market_label or "").replace("_", " ").strip()
+    s = s.split(",")[0].strip()
+    # drop a trailing 2-letter state token (e.g. 'austin tx')
+    toks = s.split()
+    if len(toks) > 1 and len(toks[-1]) == 2:
+        toks = toks[:-1]
+    return " ".join(toks).strip()
+
+
+def socrata_collect(market_label: str, *, limit: int | None = None, log=print,
+                    datasets: list[dict] | None = None) -> list[dict]:
+    """Find recently-licensed businesses from Socrata open-data portals (no key).
+
+    datasets: optional explicit [{"domain":..., "id":...}] to read directly,
+    bypassing catalog search (the reliable path for a portal you already know).
+    Otherwise we search the Discovery API for the market's locality.
+    """
+    city = _locality_terms(market_label)
+    candidates: list[dict] = list(datasets or [])
+
+    if not candidates:
+        if not city:
+            log("  Socrata: no locality to search; skipping.")
+            return []
+        try:
+            r = requests.get(SOCRATA_CATALOG, params={
+                "q": f"{city} business license", "only": "dataset", "limit": 20,
+            }, headers={"User-Agent": UA}, timeout=20)
+            results = r.json().get("results", []) if r.status_code == 200 else []
+        except Exception as e:
+            log(f"  Socrata catalog search failed: {e}")
+            return []
+        city_l = city.lower()
+        for res in results:
+            meta, resource = res.get("metadata", {}), res.get("resource", {})
+            domain, ds_id = meta.get("domain", ""), resource.get("id", "")
+            nm = (resource.get("name", "") or "").lower()
+            if not domain or not ds_id:
+                continue
+            # keep license/registration datasets that look tied to this locality
+            looks_license = any(w in nm for w in ("business", "licen", "registration", "tax certif"))
+            looks_local = city_l in nm or city_l.replace(" ", "") in domain.lower()
+            if looks_license and looks_local:
+                candidates.append({"domain": domain, "id": ds_id, "name": resource.get("name", "")})
+        log(f"  Socrata: '{city}' -> {len(candidates)} matching dataset(s)")
+
+    out: list[dict] = []
+    per = min(1000, limit or 1000)
+    for ds in candidates[:3]:
+        url = f"https://{ds['domain']}/resource/{ds['id']}.json"
+        try:
+            r = requests.get(url, params={"$limit": per}, headers={"User-Agent": UA}, timeout=25)
+            rows = r.json() if r.status_code == 200 else []
+        except Exception as e:
+            log(f"  Socrata read failed ({ds['domain']}): {e}")
+            continue
+        got = 0
+        for row in rows if isinstance(rows, list) else []:
+            rec = _socrata_map_row(row)
+            if rec:
+                rec["source_url"] = f"https://{ds['domain']}/d/{ds['id']}"
+                out.append(rec)
+                got += 1
+            if limit and len(out) >= limit:
+                break
+        log(f"    {ds.get('name') or ds['id']}: {got} records")
+        if limit and len(out) >= limit:
+            break
+    log(f"  Socrata: {len(out)} businesses")
     return out

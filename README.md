@@ -86,13 +86,28 @@ needed) — see [`gui/BUILD_EXE.md`](gui/BUILD_EXE.md). See [`gui/README.md`](gu
 
 ## Data sources
 
+All free, **no API keys**. Each returns the same normalized record shape, so the
+rest of the pipeline is source-agnostic. Pick any combination:
+
 | Source | What it is | Needs | License |
 |---|---|---|---|
 | **Overture** | Meta/Microsoft/Amazon's open Places dataset, queried by bbox over S3 | `duckdb` | CC-BY 4.0 |
-| **OpenStreetMap** | live businesses via the Overpass API | nothing extra | ODbL |
+| **OpenStreetMap** | live businesses via the Overpass API — pulls every named shop/craft/office + key amenities in the area | nothing extra | ODbL |
+| **Socrata open data** | recently-licensed businesses from city/county open-data portals — surfaces new businesses that don't have a website yet | nothing extra | per-portal (mostly public domain) |
 
-Both return the same normalized record shape, so the rest of the pipeline is
-source-agnostic. Pick one or both with `--sources overture osm`.
+```bash
+python -m leadgen --vertical web_design --market "Boulder, Colorado" --sources overture osm socrata
+```
+
+Notes:
+- **OpenStreetMap** is the broadest no-key live source — the engine queries all
+  shops, trades, offices, and the business-y amenities (restaurants, clinics,
+  hotels, …), not a short hardcoded list.
+- **Socrata** coverage is per-jurisdiction and patchy (great for some cities,
+  empty for others); it's best used *alongside* the map sources, not alone. A
+  vertical or run can point it at a specific dataset via `config["socrata_datasets"]`.
+- Foursquare's formerly-open Places bucket has been retired behind an account-gated
+  portal, so it's intentionally not wired in.
 
 ---
 

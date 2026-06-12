@@ -15,12 +15,21 @@ from . import get_vertical, all_verticals, run_pipeline
 
 
 def main(argv=None) -> int:
+    # Make logging robust on Windows consoles / redirected output, where the
+    # default code page (cp1252) can't encode the glyphs in our progress lines.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     ap = argparse.ArgumentParser(prog="leadgen", description="Universal lead-gen engine")
     ap.add_argument("--list", action="store_true", help="list available verticals and exit")
     ap.add_argument("--vertical", help="vertical key (see --list)")
     ap.add_argument("--market", help="named market key or a geocodable place name")
     ap.add_argument("--sources", nargs="+", default=["overture"],
-                    choices=["overture", "osm"], help="data sources to collect from")
+                    choices=["overture", "osm", "socrata"],
+                    help="data sources to collect from (socrata = open-data business licenses)")
     ap.add_argument("--limit", type=int, help="cap businesses collected")
     ap.add_argument("--enrich-cap", type=int, default=150,
                     help="enrich only the top-N businesses (cost control)")

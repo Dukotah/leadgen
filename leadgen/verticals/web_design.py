@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from .. import register, Vertical
 from ..audit import is_weak_url, DIY_BUILDERS
-from ._common import audit_enrich
+from ._common import audit_enrich, BROAD_OSM_TAGS
 
 CONFIG = {"diy_builders": DIY_BUILDERS}
 
@@ -72,8 +72,7 @@ register(Vertical(
     description=("Finds local businesses with no website, a social-only page, or "
                  "a weak/outdated site — good prospects for web-design work."),
     overture_categories=[],          # all categories; broad by design
-    osm_tags=["craft=plumber", "craft=electrician", "shop=car_repair",
-              "shop=hairdresser", "amenity=restaurant", "office=lawyer"],
+    osm_tags=BROAD_OSM_TAGS,
     keep_chains=False,               # chains don't buy from local web designers
     score_fn=_score,
     enrich_fn=audit_enrich,
